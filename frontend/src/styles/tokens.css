@@ -1,0 +1,19 @@
+:root {
+  --surface-canvas: #F1F3F5;
+  --surface-lane: #E6E9ED;
+  --surface-raised: #FFFFFF;
+  --rule: #D3D8DE;
+  --rule-strong: #B3BAC4;
+  --ink: #1F252C;
+  --ink-muted: #56616D;
+  --accent: #0E6B6F;
+  --accent-wash: #D8EBEC;
+  --priority-high-ink: #9E2A1D;
+  --priority-high-wash: #FADFDB;
+  --priority-medium-ink: #7A5200;
+  --priority-medium-wash: #F8ECC8;
+  --priority-low-ink: #46525F;
+  --priority-low-wash: #DDE2E8;
+  --danger: #B42318;
+  --warning-wash: #FBF0D0;
+}
