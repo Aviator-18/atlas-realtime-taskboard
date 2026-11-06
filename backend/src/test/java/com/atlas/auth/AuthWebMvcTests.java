@@ -3,8 +3,10 @@ package com.atlas.auth;
 import com.atlas.auth.service.AuthService;
 import com.atlas.auth.service.DuplicateEmailException;
 import com.atlas.auth.service.InvalidCredentialsException;
+import com.atlas.auth.web.AuthController;
 import com.atlas.auth.web.AuthResponse;
 import com.atlas.auth.web.LoginRequest;
+import com.atlas.auth.web.MeController;
 import com.atlas.auth.web.RegisterRequest;
 import com.atlas.auth.web.UserResponse;
 import com.atlas.common.CommonConfig;
@@ -12,6 +14,7 @@ import com.atlas.common.GlobalExceptionHandler;
 import com.atlas.common.JwtProperties;
 import com.atlas.common.RestAuthenticationEntryPoint;
 import com.atlas.common.SecurityConfig;
+import com.atlas.task.service.TaskReadService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -38,7 +41,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest
+@WebMvcTest(controllers = {AuthController.class, MeController.class})
 @Import({
         SecurityConfig.class,
         JwtProperties.class,
@@ -60,6 +63,9 @@ class AuthWebMvcTests {
 
     @MockBean
     private AuthService authService;
+
+    @MockBean
+    private TaskReadService taskReadService;
 
     @Test
     void successful_registration_returns_201_with_token_and_user() throws Exception {
