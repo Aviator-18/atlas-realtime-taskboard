@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: atlas-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/atlas}
+    username: ${DB_USER:atlas}
+    password: ${DB_PASSWORD:atlas}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+atlas:
+  security:
+    jwt-secret: ${ATLAS_JWT_SECRET:}
+    cors-origins: ${ATLAS_CORS_ORIGINS:http://localhost:5173}
+  llm:
+    base-url: ${ATLAS_LLM_BASE_URL:}
+    model: ${ATLAS_LLM_MODEL:}
+    api-key: ${ATLAS_LLM_API_KEY:}
+    timeout-ms: ${ATLAS_LLM_TIMEOUT_MS:5000}

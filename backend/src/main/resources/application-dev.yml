@@ -1,0 +1,15 @@
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+atlas:
+  security:
+    jwt-secret: ${ATLAS_JWT_SECRET:dev-insecure-secret-key-at-least-32-bytes-long}
