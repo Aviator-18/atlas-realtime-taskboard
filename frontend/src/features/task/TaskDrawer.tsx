@@ -132,18 +132,29 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
   return (
     <aside
       aria-label="Task details"
-      className="fixed top-0 right-0 h-full w-full md:w-[420px] bg-surface-raised border-l border-rule shadow-floating z-40 flex flex-col transition-transform duration-drawer ease-out"
+      className="fixed top-12 right-0 h-[calc(100vh-48px)] w-full md:w-[420px] bg-surface-raised border-l border-rule shadow-floating z-30 flex flex-col transition-transform duration-drawer ease-out"
     >
-      {/* Header */}
-      <div className="p-4 border-b border-rule flex items-center justify-between gap-2 flex-shrink-0">
-        <h2 className="text-[18px] leading-[26px] font-semibold text-ink">
-          {strings.task.titleLabel}
-        </h2>
+      {/* Header with task title field and close button */}
+      <div className="p-4 border-b border-rule flex items-center justify-between gap-3 flex-shrink-0">
+        <div className="flex-1">
+          <label htmlFor="drawer-task-title" className="sr-only">
+            {strings.task.titleLabel}
+          </label>
+          <input
+            id="drawer-task-title"
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+            maxLength={120}
+            className="w-full text-[18px] leading-[26px] font-semibold text-ink bg-surface-raised border border-rule-strong hover:border-ink-muted rounded-sm px-2.5 h-8 transition-colors duration-fast outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          />
+        </div>
         <button
           type="button"
           onClick={onClose}
           aria-label={strings.task.closeDrawer}
-          className="p-1 rounded-sm text-ink-muted hover:text-ink hover:bg-surface-canvas transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="p-1 rounded-sm text-ink-muted hover:text-ink hover:bg-surface-canvas transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0"
         >
           <X size={16} strokeWidth={1.5} />
         </button>
@@ -189,14 +200,6 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
         ) : null}
 
         <form id="task-drawer-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <TextField
-            label={strings.task.titleLabel}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            maxLength={120}
-          />
-
           <TextAreaField
             label={strings.task.descriptionLabel}
             value={description}
