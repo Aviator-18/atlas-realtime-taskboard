@@ -20,6 +20,8 @@ public interface TaskRepository extends JpaRepository<TaskEntity, Long> {
 
     List<TaskEntity> findByColumnIdAndIdNotOrderByPositionAsc(Long columnId, Long excludedTaskId);
 
+    List<TaskEntity> findTop5ByBoardIdAndCompletedAtIsNotNullAndEstimateHoursIsNotNullOrderByCompletedAtDesc(Long boardId);
+
     @Modifying
     @Query("UPDATE TaskEntity t SET t.position = :position WHERE t.id = :taskId")
     int updatePositionWithoutVersionBump(@Param("taskId") Long taskId, @Param("position") Integer position);

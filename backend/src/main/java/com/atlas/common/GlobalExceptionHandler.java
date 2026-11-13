@@ -5,6 +5,7 @@ import com.atlas.auth.service.InvalidCredentialsException;
 import com.atlas.board.service.BoardNotFoundException;
 import com.atlas.board.service.ColumnNotFoundException;
 import com.atlas.board.service.InvalidInviteCodeException;
+import com.atlas.estimation.service.EstimationRateLimitedException;
 import com.atlas.task.service.TaskNotFoundException;
 import com.atlas.task.service.TaskReadService;
 import com.atlas.task.service.TaskVersionConflictException;
@@ -218,6 +219,19 @@ public class GlobalExceptionHandler {
         problem.setProperty("code", "INVALID_INVITE_CODE");
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
+    }
+
+    @ExceptionHandler(EstimationRateLimitedException.class)
+    public ResponseEntity<ProblemDetail> handleEstimationRateLimited(EstimationRateLimitedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.TOO_MANY_REQUESTS,
+                "Too many suggestions in a short time. Try again in a minute."
+        );
+        problem.setType(URI.create(PROBLEM_BASE_URL + "estimation-rate-limited"));
+        problem.setTitle("Estimation rate limit exceeded");
+        problem.setProperty("code", "ESTIMATION_RATE_LIMITED");
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(problem);
     }
 
     @ExceptionHandler(TaskVersionConflictException.class)
