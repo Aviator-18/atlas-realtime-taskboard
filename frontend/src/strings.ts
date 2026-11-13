@@ -72,6 +72,19 @@ export const strings = {
     hoursAgo: (hours: number) => `${hours}h ago`,
     daysAgo: (days: number) => `${days}d ago`,
     closeDrawer: 'Close',
+    conflictPending: 'Conflict pending',
+  },
+  dnd: {
+    pickedUp: (title: string, column: string, position: number, total: number) =>
+      `Picked up task ${title}. Current position: ${column}, ${position} of ${total}.`,
+    movedOverTask: (title: string, targetTitle: string, column: string) =>
+      `Task ${title} moved over ${targetTitle} in ${column}.`,
+    movedOverColumn: (title: string, column: string) =>
+      `Task ${title} moved over column ${column}.`,
+    dropped: (title: string, column: string, position: number, total: number) =>
+      `Dropped task ${title} into ${column} at position ${position} of ${total}.`,
+    cancelled: (title: string) =>
+      `Dragging cancelled. Task ${title} returned to original position.`,
   },
   errors: {
     genericFailure: 'Something went wrong while saving. Try again.',
