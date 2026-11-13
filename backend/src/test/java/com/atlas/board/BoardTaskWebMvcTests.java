@@ -176,7 +176,7 @@ class BoardTaskWebMvcTests {
                         .content("""
                                 {
                                   "version": 1,
-                                  "unknownProperty": "bar"
+                                  "unknownProperty": "unexpected"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())

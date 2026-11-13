@@ -79,7 +79,7 @@ class TaskPatchParserTest {
         String json = """
                 {
                   "version": 1,
-                  "extraField": "foo",
+                  "extraField": "customPayload",
                   "status": "DONE"
                 }
                 """;
