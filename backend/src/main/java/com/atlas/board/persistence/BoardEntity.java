@@ -1,5 +1,7 @@
 package com.atlas.board.persistence;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -21,6 +23,7 @@ public class BoardEntity {
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "invite_code", nullable = false, length = 8, unique = true)
     private String inviteCode;
 
