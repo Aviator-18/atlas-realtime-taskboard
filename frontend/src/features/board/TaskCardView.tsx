@@ -4,6 +4,16 @@ import { PriorityChip } from '../../components/Chip';
 import { Avatar } from '../../components/Avatar';
 import { strings } from '../../strings';
 
+export interface TaskCue {
+  caption: string;
+}
+
+export interface TaskConflict {
+  message: string;
+  onApplyAgain: () => void;
+  onDismiss: () => void;
+}
+
 export interface TaskCardViewProps {
   task: Task;
   members: Member[];
@@ -13,6 +23,8 @@ export interface TaskCardViewProps {
   isOverlay?: boolean;
   dropIndicator?: 'before' | 'after' | null;
   hasConflict?: boolean;
+  cue?: TaskCue | null;
+  conflict?: TaskConflict | null;
 }
 
 export const TaskCardView: React.FC<TaskCardViewProps> = ({
@@ -24,6 +36,8 @@ export const TaskCardView: React.FC<TaskCardViewProps> = ({
   isOverlay = false,
   dropIndicator = null,
   hasConflict = false,
+  cue = null,
+  conflict = null,
 }) => {
   const assignee = task.assigneeId
     ? members.find((m) => m.id === task.assigneeId)
@@ -54,7 +68,9 @@ export const TaskCardView: React.FC<TaskCardViewProps> = ({
             ? '0 6px 16px rgba(31, 37, 44, 0.18)'
             : undefined,
         }}
-        className={`bg-surface-raised border rounded-md p-[10px_12px] cursor-pointer transition-colors duration-fast text-left select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+        className={`border rounded-md p-[10px_12px] cursor-pointer transition-colors duration-fast text-left select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+          cue ? 'live-cue-card' : 'bg-surface-raised'
+        } ${
           isOverlay
             ? 'border-rule-strong'
             : isDragging
@@ -67,6 +83,16 @@ export const TaskCardView: React.FC<TaskCardViewProps> = ({
         <h3 className="text-[14px] leading-5 font-medium text-ink line-clamp-3">
           {task.title}
         </h3>
+
+        {/* Live cue caption: 12.5 px, ink-muted */}
+        {cue && (
+          <p
+            data-testid={`live-cue-caption-${task.id}`}
+            className="mt-1 text-[12.5px] leading-[18px] text-ink-muted"
+          >
+            {cue.caption}
+          </p>
+        )}
 
         <div className="mt-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -87,8 +113,38 @@ export const TaskCardView: React.FC<TaskCardViewProps> = ({
           </div>
         </div>
 
-        {/* Extension point for Phase 7: Conflict banner */}
-        {hasConflict && (
+        {/* Conflict presentation banner attached to card */}
+        {conflict ? (
+          <div
+            data-testid={`task-conflict-banner-${task.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-2.5 -mx-3 -mb-2.5 p-2.5 bg-warning-wash border-t border-rule rounded-b-md text-[12.5px] leading-[18px] text-ink"
+          >
+            <p className="font-medium text-ink">{conflict.message}</p>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  conflict.onApplyAgain();
+                }}
+                className="px-2.5 py-1 text-[12px] leading-4 font-medium rounded-sm bg-accent text-white hover:bg-accent/90 transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                {strings.conflict.applyAgain}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  conflict.onDismiss();
+                }}
+                className="px-2.5 py-1 text-[12px] leading-4 font-medium rounded-sm bg-surface-raised border border-rule-strong text-ink hover:bg-surface-canvas transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                {strings.conflict.dismiss}
+              </button>
+            </div>
+          </div>
+        ) : hasConflict ? (
           <div
             data-testid="task-conflict-extension-point"
             className="mt-2 pt-2 border-t border-rule flex items-center gap-1.5 text-[12px] leading-4 text-priority-high-ink"
@@ -96,7 +152,7 @@ export const TaskCardView: React.FC<TaskCardViewProps> = ({
             <span className="w-1.5 h-1.5 rounded-full bg-danger inline-block flex-shrink-0" />
             <span className="font-medium">{strings.task.conflictPending}</span>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Drop indicator line after card (2 px --accent line) */}

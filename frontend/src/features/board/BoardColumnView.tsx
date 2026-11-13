@@ -4,6 +4,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { BoardColumn, Member, Task } from '../../api/types';
 import { SortableTaskCard } from './SortableTaskCard';
+import type { TaskCue, TaskConflict } from './TaskCardView';
 import { parseDndId } from './dndUtils';
 import { strings } from '../../strings';
 
@@ -16,6 +17,9 @@ export interface BoardColumnViewProps {
   activeDragId?: string | number | null;
   overDropId?: string | number | null;
   conflictTaskIds?: Set<number>;
+  cuesByTaskId?: Record<number, TaskCue>;
+  conflictsByTaskId?: Record<number, TaskConflict>;
+  deletedTaskBanners?: Array<{ id: number; columnId: number; message: string }>;
 }
 
 export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
@@ -27,6 +31,9 @@ export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
   activeDragId = null,
   overDropId = null,
   conflictTaskIds,
+  cuesByTaskId,
+  conflictsByTaskId,
+  deletedTaskBanners = [],
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `col-${column.id}`,
@@ -108,10 +115,24 @@ export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
                   onClick={() => onSelectTask(task)}
                   hasConflict={conflictTaskIds?.has(task.id) ?? false}
                   dropIndicator={dropIndicator}
+                  cue={cuesByTaskId ? cuesByTaskId[task.id] : null}
+                  conflict={conflictsByTaskId ? conflictsByTaskId[task.id] : null}
                 />
               );
             })
           )}
+          {/* Temporary placeholder banner for deleted tasks in this column */}
+          {deletedTaskBanners
+            .filter((b) => b.columnId === column.id)
+            .map((banner) => (
+              <div
+                key={`deleted-banner-${banner.id}`}
+                data-testid={`deleted-task-banner-${banner.id}`}
+                className="bg-warning-wash border border-rule rounded-md p-2.5 text-[12.5px] leading-[18px] text-ink animate-fade-in"
+              >
+                {banner.message}
+              </div>
+            ))}
         </SortableContext>
       </div>
     </div>

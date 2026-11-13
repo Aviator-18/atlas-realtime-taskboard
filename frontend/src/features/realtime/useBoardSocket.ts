@@ -1,15 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { connectBoardSocket, type SocketConnectionState } from '../../api/socket';
 import { getAuthToken } from '../../api/client';
 import { applyBoardEvent } from './reconciliation';
 import type { BoardDetail, BoardEvent } from '../../api/types';
 
-export function useBoardSocket(boardId: number): { status: SocketConnectionState } {
+export interface UseBoardSocketOptions {
+  onBoardEvent?: (event: BoardEvent) => void;
+}
+
+export function useBoardSocket(
+  boardId: number,
+  options?: UseBoardSocketOptions,
+): { status: SocketConnectionState } {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<SocketConnectionState>(() =>
     getAuthToken() ? 'live' : 'offline'
   );
+
+  const onBoardEventRef = useRef(options?.onBoardEvent);
+  useEffect(() => {
+    onBoardEventRef.current = options?.onBoardEvent;
+  }, [options?.onBoardEvent]);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -24,6 +36,8 @@ export function useBoardSocket(boardId: number): { status: SocketConnectionState
         }
         return result.state;
       });
+
+      onBoardEventRef.current?.(event);
     };
 
     const handleReconnect = () => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { BoardColumn, Member, Priority, Task, UpdateTaskRequest } from '../../api/types';
 import { TextField, TextAreaField, SelectField } from '../../components/TextField';
@@ -12,6 +12,8 @@ export interface TaskDrawerProps {
   task: Task | null;
   columns: BoardColumn[];
   members: Member[];
+  conflictActorName?: string | null;
+  onClearConflict?: () => void;
   onClose: () => void;
   onSave: (taskId: number, updates: UpdateTaskRequest) => Promise<void>;
   onDelete: (taskId: number, version: number) => Promise<void>;
@@ -21,10 +23,16 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
   task,
   columns,
   members,
+  conflictActorName = null,
+  onClearConflict,
   onClose,
   onSave,
   onDelete,
 }) => {
+  const currentTaskIdRef = useRef<number | null>(null);
+  const displayedVersionRef = useRef<number>(task?.version ?? 1);
+
+  const [displayedVersion, setDisplayedVersion] = useState<number>(() => task?.version ?? 1);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [estimateHours, setEstimateHours] = useState<string>('');
@@ -33,10 +41,20 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
   const [columnId, setColumnId] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [conflictBanner, setConflictBanner] = useState<string | null>(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
+  const updateDisplayedVersion = (ver: number) => {
+    displayedVersionRef.current = ver;
+    setDisplayedVersion(ver);
+  };
+
   useEffect(() => {
-    if (task) {
+    if (!task) return;
+
+    if (currentTaskIdRef.current !== task.id) {
+      // Switching to a different task: initialize form values
+      currentTaskIdRef.current = task.id;
       setTitle(task.title);
       setDescription(task.description || '');
       setEstimateHours(
@@ -47,15 +65,16 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
       setPriority(task.priority);
       setAssigneeId(task.assigneeId ? String(task.assigneeId) : '');
       setColumnId(task.columnId);
+      updateDisplayedVersion(task.version);
       setErrorMessage(null);
+      setConflictBanner(null);
       setIsConfirmingDelete(false);
     }
   }, [task]);
 
   if (!task) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performSave = async () => {
     setErrorMessage(null);
 
     const trimmedTitle = title.trim();
@@ -71,7 +90,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
     }
 
     const updates: UpdateTaskRequest = {
-      version: task.version,
+      version: displayedVersionRef.current,
       title: trimmedTitle,
       description: description,
       estimateHours: parsedEstimate,
@@ -89,13 +108,19 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
     setIsSubmitting(true);
     try {
       await onSave(task.id, updates);
+      setConflictBanner(null);
+      onClearConflict?.();
       onClose();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'TASK_VERSION_CONFLICT') {
-        setErrorMessage(
-          err.details.detail ||
-            `${strings.errors.conflictTitle}. ${strings.errors.conflictDetail}`,
-        );
+        const currentTask = err.details.currentTask;
+        if (currentTask) {
+          updateDisplayedVersion(currentTask.version);
+        }
+        const bannerText = conflictActorName
+          ? strings.conflict.banner(conflictActorName)
+          : strings.conflict.bannerFallback;
+        setConflictBanner(bannerText);
       } else if (err instanceof ApiError && err.details.detail) {
         setErrorMessage(err.details.detail);
       } else {
@@ -106,18 +131,27 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void performSave();
+  };
+
   const handleDelete = async () => {
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      await onDelete(task.id, task.version);
+      await onDelete(task.id, displayedVersionRef.current);
       onClose();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'TASK_VERSION_CONFLICT') {
-        setErrorMessage(
-          err.details.detail ||
-            `${strings.errors.conflictTitle}. ${strings.errors.conflictDetail}`,
-        );
+        const currentTask = err.details.currentTask;
+        if (currentTask) {
+          updateDisplayedVersion(currentTask.version);
+        }
+        const bannerText = conflictActorName
+          ? strings.conflict.banner(conflictActorName)
+          : strings.conflict.bannerFallback;
+        setConflictBanner(bannerText);
       } else if (err instanceof ApiError && err.details.detail) {
         setErrorMessage(err.details.detail);
       } else {
@@ -162,6 +196,35 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        {/* Conflict presentation banner at the top of the drawer */}
+        {conflictBanner && (
+          <div
+            data-testid="drawer-conflict-banner"
+            className="p-3 bg-warning-wash border border-rule rounded-sm text-[12.5px] leading-[18px] text-ink flex flex-col gap-2"
+          >
+            <p className="font-medium text-ink">{conflictBanner}</p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void performSave()}
+                className="px-2.5 py-1 text-[12px] leading-4 font-medium rounded-sm bg-accent text-white hover:bg-accent/90 transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                {strings.conflict.applyAgain}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConflictBanner(null);
+                  onClearConflict?.();
+                }}
+                className="px-2.5 py-1 text-[12px] leading-4 font-medium rounded-sm bg-surface-raised border border-rule-strong text-ink hover:bg-surface-canvas transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                {strings.conflict.dismiss}
+              </button>
+            </div>
+          </div>
+        )}
+
         {errorMessage && (
           <Banner
             message={errorMessage}
@@ -258,7 +321,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
           </div>
         </form>
 
-        {/* Timestamps */}
+        {/* Timestamps and displayed version */}
         <div className="mt-4 pt-4 border-t border-rule text-[12.5px] leading-[18px] text-ink-muted flex flex-col gap-1">
           <div className="flex justify-between">
             <span>{strings.task.created}</span>
@@ -270,6 +333,12 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
             <span>{strings.task.lastUpdated}</span>
             <span title={new Date(task.updatedAt).toLocaleString()}>
               {formatRelativeTime(task.updatedAt)}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Version</span>
+            <span data-testid="drawer-displayed-version" className="tabular-nums">
+              {displayedVersion}
             </span>
           </div>
         </div>

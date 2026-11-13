@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import type { Task, Member } from '../../api/types';
-import { TaskCardView } from './TaskCardView';
+import { TaskCardView, type TaskCue, type TaskConflict } from './TaskCardView';
 
 export interface SortableTaskCardProps {
   task: Task;
@@ -10,6 +10,8 @@ export interface SortableTaskCardProps {
   onClick: () => void;
   hasConflict?: boolean;
   dropIndicator?: 'before' | 'after' | null;
+  cue?: TaskCue | null;
+  conflict?: TaskConflict | null;
 }
 
 export const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
@@ -19,6 +21,8 @@ export const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
   onClick,
   hasConflict = false,
   dropIndicator = null,
+  cue = null,
+  conflict = null,
 }) => {
   const {
     attributes,
@@ -60,6 +64,8 @@ export const SortableTaskCard: React.FC<SortableTaskCardProps> = ({
         isDragging={isDragging}
         dropIndicator={dropIndicator}
         hasConflict={hasConflict}
+        cue={cue}
+        conflict={conflict}
       />
     </div>
   );

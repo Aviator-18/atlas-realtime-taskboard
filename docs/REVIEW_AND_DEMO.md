@@ -99,6 +99,42 @@ Check what your department allows, and be straightforward about it. A defensible
 - An AI coding agent produced the first implementation of each phase from those documents.
 - You reviewed every diff, wrote or verified the tests that prove the guarantees, ran the system, fixed what was wrong, and can explain each design decision.
 
+## 8. Phase 7 verification: Two-session conflict and live cue procedure
+
+Follow these steps with two separate browser windows (Window A: Arjun, Window B: Priya) on the same board:
+
+1. **Setup:**
+   - Window A: Sign in as Arjun (`arjun@example.com`), open board "Checkout API, sprint 12".
+   - Window B: Open an incognito or private window, sign in as Priya (`priya@example.com`), open the same board.
+   - Verify connection indicators in both windows show "Live".
+
+2. **Live Cue Check:**
+   - In Window A, move task "Fix refund rounding" to "In progress".
+   - In Window B, observe the task card:
+     - 3 px accent bar on the left edge and accent-wash background.
+     - Caption under the title reads "Moved by Arjun" for 4 seconds.
+     - Live announcement region announces "Arjun moved Fix refund rounding to In progress".
+     - Bar and wash fade out over 2.4 seconds starting after 1.6 seconds.
+   - In Window A, verify that no cue appeared for your own change.
+
+3. **Conflict Presentation Check:**
+   - In Window A, click the task card to open the drawer.
+   - In Window B, click the same task card to open the drawer. Both clients are looking at version N.
+   - In Window A, change the title to "Fix refund rounding for currency conversions" and click "Save changes".
+   - Window A saves successfully (version becomes N+1).
+   - In Window B (still displaying old version N), change Priority from "Medium" to "High", and click "Save changes".
+   - Confirm Window B's save is rejected with HTTP 409 `TASK_VERSION_CONFLICT`.
+   - In Window B:
+     - The drawer stays open and preserves Priya's unsaved draft (Priority remains "High").
+     - An inline warning banner appears at the top of the drawer: "Arjun changed this task before your change was saved. Your change was not applied." with actions "Apply my change again" and "Dismiss".
+     - The drawer's displayed version updates to N+1 so that saving again is a deliberate act.
+     - The task card on the board snaps to Arjun's title ("Fix refund rounding for currency conversions") and attaches the same conflict banner.
+   - In Window B, click "Apply my change again" in the drawer:
+     - The change is re-applied against version N+1.
+     - Save succeeds (version becomes N+2).
+     - The conflict banner is cleared, and the card updates to High priority.
+
+
 If you cannot explain a part of the code, learn it or remove it before the demo. Understanding the system is what makes it a credible entry on your resume, and it is the part interviewers will test.
 
 ## 8. Two-person working agreement

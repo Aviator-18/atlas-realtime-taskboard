@@ -24,9 +24,19 @@ export interface UseBoardDndOptions {
   boardId: number;
   board: BoardDetail | undefined;
   onError: (message: string) => void;
+  onConflict?: (
+    taskId: number,
+    currentTask: Task,
+    attemptedMove: { columnId: number; afterTaskId: number | null },
+  ) => void;
 }
 
-export function useBoardDnd({ boardId, board, onError }: UseBoardDndOptions) {
+export function useBoardDnd({
+  boardId,
+  board,
+  onError,
+  onConflict,
+}: UseBoardDndOptions) {
   const queryClient = useQueryClient();
 
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
@@ -198,6 +208,10 @@ export function useBoardDnd({ boardId, board, onError }: UseBoardDndOptions) {
           return replaceTaskInBoard(old, currentTask);
         });
         setConflictTaskIds((prev) => new Set(prev).add(task.id));
+        onConflict?.(task.id, currentTask, {
+          columnId: move.columnId,
+          afterTaskId: move.afterTaskId,
+        });
       } else {
         // Roll back cache on other errors
         if (previousBoard) {

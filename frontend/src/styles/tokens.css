@@ -17,3 +17,30 @@
   --danger: #B42318;
   --warning-wash: #FBF0D0;
 }
+
+@keyframes liveCueFade {
+  0%, 40% {
+    background-color: var(--accent-wash);
+    border-left-color: var(--accent);
+  }
+  100% {
+    background-color: var(--surface-raised);
+    border-left-color: var(--rule);
+  }
+}
+
+.live-cue-card {
+  border-left-width: 3px !important;
+  border-left-color: var(--accent) !important;
+  background-color: var(--accent-wash) !important;
+  animation: liveCueFade 4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-cue-card {
+    animation: none !important;
+    background-color: var(--accent-wash) !important;
+    border-left-color: var(--accent) !important;
+  }
+}
+

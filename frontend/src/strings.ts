@@ -74,6 +74,26 @@ export const strings = {
     closeDrawer: 'Close',
     conflictPending: 'Conflict pending',
   },
+  cue: {
+    addedBy: (name: string) => `Added by ${name}`,
+    editedBy: (name: string) => `Edited by ${name}`,
+    movedBy: (name: string) => `Moved by ${name}`,
+    announcedAdded: (name: string, title: string, column: string) =>
+      `${name} added ${title} to ${column}`,
+    announcedEdited: (name: string, title: string) =>
+      `${name} edited ${title}`,
+    announcedMoved: (name: string, title: string, column: string) =>
+      `${name} moved ${title} to ${column}`,
+  },
+  conflict: {
+    banner: (name: string) =>
+      `${name} changed this task before your change was saved. Your change was not applied.`,
+    bannerFallback:
+      'Another member changed this task before your change was saved. Your change was not applied.',
+    applyAgain: 'Apply my change again',
+    dismiss: 'Dismiss',
+    taskDeleted: 'This task was deleted by someone else.',
+  },
   dnd: {
     pickedUp: (title: string, column: string, position: number, total: number) =>
       `Picked up task ${title}. Current position: ${column}, ${position} of ${total}.`,
