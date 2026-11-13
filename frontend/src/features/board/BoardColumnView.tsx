@@ -1,7 +1,10 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { BoardColumn, Member, Task } from '../../api/types';
-import { TaskCardView } from './TaskCardView';
+import { SortableTaskCard } from './SortableTaskCard';
+import { parseDndId } from './dndUtils';
 import { strings } from '../../strings';
 
 export interface BoardColumnViewProps {
@@ -10,6 +13,9 @@ export interface BoardColumnViewProps {
   selectedTaskId: number | null;
   onSelectTask: (task: Task) => void;
   onAddTask: (columnId: number) => void;
+  activeDragId?: string | number | null;
+  overDropId?: string | number | null;
+  conflictTaskIds?: Set<number>;
 }
 
 export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
@@ -18,9 +24,26 @@ export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
   selectedTaskId,
   onSelectTask,
   onAddTask,
+  activeDragId = null,
+  overDropId = null,
+  conflictTaskIds,
 }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `col-${column.id}`,
+    data: {
+      type: 'column',
+      column,
+    },
+  });
+
+  const isOverColumnBottom = overDropId === `col-${column.id}`;
+
   return (
-    <div className="w-[300px] flex-shrink-0 bg-surface-lane rounded-sm p-3 flex flex-col max-h-full">
+    <div
+      ref={setNodeRef}
+      data-testid={`board-column-${column.id}`}
+      className="w-[300px] flex-shrink-0 bg-surface-lane rounded-sm p-3 flex flex-col max-h-full"
+    >
       {/* Column Header */}
       <div className="flex items-center justify-between pb-2 mb-2 border-b border-rule/60">
         <div className="flex items-center gap-2">
@@ -42,22 +65,54 @@ export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
       </div>
 
       {/* Column Tasks */}
-      <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-0.5">
-        {column.tasks.length === 0 ? (
-          <div className="py-6 text-center text-[12.5px] leading-[18px] text-ink-muted select-none">
-            {strings.boardView.noTasks}
-          </div>
-        ) : (
-          column.tasks.map((task) => (
-            <TaskCardView
-              key={task.id}
-              task={task}
-              members={members}
-              isSelected={task.id === selectedTaskId}
-              onClick={() => onSelectTask(task)}
-            />
-          ))
-        )}
+      <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-0.5 min-h-[60px]">
+        <SortableContext
+          items={column.tasks.map((t) => `task-${t.id}`)}
+          strategy={verticalListSortingStrategy}
+        >
+          {column.tasks.length === 0 ? (
+            <div className="py-6 text-center text-[12.5px] leading-[18px] text-ink-muted select-none relative">
+              {isOver && (
+                <div
+                  data-testid="empty-column-drop-indicator"
+                  className="h-[2px] bg-accent rounded-full mb-3 w-full"
+                />
+              )}
+              {strings.boardView.noTasks}
+            </div>
+          ) : (
+            column.tasks.map((task, index) => {
+              const isOverCard = overDropId === `task-${task.id}`;
+              const isLastCard = index === column.tasks.length - 1;
+
+              let dropIndicator: 'before' | 'after' | null = null;
+              if (isOverCard && activeDragId !== `task-${task.id}`) {
+                const activeParsed = parseDndId(activeDragId);
+                const activeTaskId = activeParsed?.id;
+                const activeIndex = column.tasks.findIndex((t) => t.id === activeTaskId);
+                if (activeIndex !== -1) {
+                  dropIndicator = activeIndex < index ? 'after' : 'before';
+                } else {
+                  dropIndicator = 'before';
+                }
+              } else if (isLastCard && isOverColumnBottom && activeDragId !== `task-${task.id}`) {
+                dropIndicator = 'after';
+              }
+
+              return (
+                <SortableTaskCard
+                  key={task.id}
+                  task={task}
+                  members={members}
+                  isSelected={task.id === selectedTaskId}
+                  onClick={() => onSelectTask(task)}
+                  hasConflict={conflictTaskIds?.has(task.id) ?? false}
+                  dropIndicator={dropIndicator}
+                />
+              );
+            })
+          )}
+        </SortableContext>
       </div>
     </div>
   );
