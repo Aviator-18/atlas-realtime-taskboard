@@ -1,4 +1,5 @@
-import React, { useId } from 'react';
+import React, { useId, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 export interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -6,10 +7,13 @@ export interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputEleme
 }
 
 export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
-  ({ label, error, id, className = '', ...props }, ref) => {
+  ({ label, error, id, className = '', type, ...props }, ref) => {
     const generatedId = useId();
     const inputId = id ?? generatedId;
     const errorId = error ? `${inputId}-error` : undefined;
+    const [showPassword, setShowPassword] = useState(false);
+    const isPasswordField = type === 'password';
+    const computedType = isPasswordField ? (showPassword ? 'text' : 'password') : type;
 
     return (
       <div className="flex flex-col gap-1 w-full">
@@ -18,16 +22,33 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
             {label}
           </label>
         )}
-        <input
-          ref={ref}
-          id={inputId}
-          aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={errorId}
-          className={`h-8 px-2.5 text-[14px] leading-5 text-ink bg-surface-raised border rounded-sm transition-all duration-fast ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:bg-surface-canvas disabled:text-ink-muted ${
-            error ? 'border-danger' : 'border-rule-strong hover:border-ink-muted'
-          } ${className}`}
-          {...props}
-        />
+        <div className="relative w-full flex items-center">
+          <input
+            ref={ref}
+            id={inputId}
+            type={computedType}
+            aria-invalid={error ? 'true' : 'false'}
+            aria-describedby={errorId}
+            className={`h-8 px-2.5 ${isPasswordField ? 'pr-8' : ''} w-full text-[14px] leading-5 text-ink bg-surface-raised border rounded-sm transition-all duration-fast ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:bg-surface-canvas disabled:text-ink-muted ${
+              error ? 'border-danger' : 'border-rule-strong hover:border-ink-muted'
+            } ${className}`}
+            {...props}
+          />
+          {isPasswordField && (
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-2 text-ink-muted hover:text-ink focus-visible:ring-2 focus-visible:ring-accent rounded-sm outline-none transition-colors"
+            >
+              {showPassword ? (
+                <EyeOff className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
+              ) : (
+                <Eye className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
+              )}
+            </button>
+          )}
+        </div>
         {error && (
           <p id={errorId} className="text-[12.5px] leading-[18px] text-danger" role="alert">
             {error}

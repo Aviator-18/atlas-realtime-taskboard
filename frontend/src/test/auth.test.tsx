@@ -84,6 +84,32 @@ describe('SignInPage', () => {
       expect(getAuthToken()).toBe('jwt-12345');
     });
   });
+
+  it('toggles password visibility when eye icon is clicked', async () => {
+    const user = userEvent.setup();
+    const queryClient = new QueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider>
+          <AuthProvider>
+            <SignInPage />
+          </AuthProvider>
+        </RouterProvider>
+      </QueryClientProvider>,
+    );
+
+    const passwordInput = screen.getByLabelText('Password');
+    expect(passwordInput).toHaveAttribute('type', 'password');
+
+    const toggleButton = screen.getByRole('button', { name: 'Show password' });
+    await user.click(toggleButton);
+
+    expect(passwordInput).toHaveAttribute('type', 'text');
+    expect(screen.getByRole('button', { name: 'Hide password' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(passwordInput).toHaveAttribute('type', 'password');
+  });
 });
 
 describe('RegisterPage', () => {
