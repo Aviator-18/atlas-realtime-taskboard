@@ -1,12 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { X } from 'lucide-react';
 import type { BoardColumn, Member, Priority, Task, UpdateTaskRequest } from '../../api/types';
 import { TextField, TextAreaField, SelectField } from '../../components/TextField';
 import { Button } from '../../components/Button';
 import { Banner } from '../../components/Banner';
 import { strings } from '../../strings';
-import { ApiError } from '../../api/client';
-import { formatRelativeTime } from '../../utils/time';
+import { TaskDeleteConfirmation } from './TaskDeleteConfirmation';
+import { TaskDrawerConflictBanner } from './TaskDrawerConflictBanner';
+import { TaskDrawerTimestamps } from './TaskDrawerTimestamps';
+import { useTaskDrawerForm } from './useTaskDrawerForm';
 
 export interface TaskDrawerProps {
   task: Task | null;
@@ -29,151 +31,36 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
   onSave,
   onDelete,
 }) => {
-  const currentTaskIdRef = useRef<number | null>(null);
-  const displayedVersionRef = useRef<number>(task?.version ?? 1);
-
-  const [displayedVersion, setDisplayedVersion] = useState<number>(() => task?.version ?? 1);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [estimateHours, setEstimateHours] = useState<string>('');
-  const [priority, setPriority] = useState<Priority>('MEDIUM');
-  const [assigneeId, setAssigneeId] = useState<string>('');
-  const [columnId, setColumnId] = useState<number>(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [conflictBanner, setConflictBanner] = useState<string | null>(null);
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
-
-  const updateDisplayedVersion = (ver: number) => {
-    displayedVersionRef.current = ver;
-    setDisplayedVersion(ver);
-  };
-
-  useEffect(() => {
-    if (!task) return;
-
-    if (currentTaskIdRef.current !== task.id) {
-      // Switching to a different task: initialize form values
-      currentTaskIdRef.current = task.id;
-      setTitle(task.title);
-      setDescription(task.description || '');
-      setEstimateHours(
-        task.estimateHours !== null && task.estimateHours !== undefined
-          ? String(task.estimateHours)
-          : '',
-      );
-      setPriority(task.priority);
-      setAssigneeId(task.assigneeId ? String(task.assigneeId) : '');
-      setColumnId(task.columnId);
-      updateDisplayedVersion(task.version);
-      setErrorMessage(null);
-      setConflictBanner(null);
-      setIsConfirmingDelete(false);
-    }
-  }, [task]);
+  const {
+    title, setTitle,
+    description, setDescription,
+    estimateHours, setEstimateHours,
+    priority, setPriority,
+    assigneeId, setAssigneeId,
+    columnId, setColumnId,
+    displayedVersion,
+    isSubmitting,
+    errorMessage, setErrorMessage,
+    conflictBanner, setConflictBanner,
+    isConfirmingDelete, setIsConfirmingDelete,
+    performSave,
+    handleDelete,
+  } = useTaskDrawerForm({
+    task,
+    conflictActorName,
+    onSave,
+    onDelete,
+    onClose,
+    onClearConflict,
+  });
 
   if (!task) return null;
 
-  const performSave = async () => {
-    setErrorMessage(null);
-
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) return;
-
-    let parsedEstimate: number | null = null;
-    if (estimateHours.trim() !== '') {
-      parsedEstimate = parseFloat(estimateHours);
-      if (isNaN(parsedEstimate) || parsedEstimate < 0.5 || parsedEstimate > 40) {
-        setErrorMessage('Estimate must be between 0.5 and 40 hours.');
-        return;
-      }
-    }
-
-    const updates: UpdateTaskRequest = {
-      version: displayedVersionRef.current,
-      title: trimmedTitle,
-      description: description,
-      estimateHours: parsedEstimate,
-      priority,
-      assigneeId: assigneeId ? parseInt(assigneeId, 10) : null,
-    };
-
-    if (columnId !== task.columnId) {
-      updates.move = {
-        columnId,
-        afterTaskId: null,
-      };
-    }
-
-    setIsSubmitting(true);
-    try {
-      await onSave(task.id, updates);
-      setConflictBanner(null);
-      onClearConflict?.();
-      onClose();
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'TASK_VERSION_CONFLICT') {
-        const currentTask = err.details.currentTask;
-        if (currentTask) {
-          updateDisplayedVersion(currentTask.version);
-        }
-        const bannerText = conflictActorName
-          ? strings.conflict.banner(conflictActorName)
-          : strings.conflict.bannerFallback;
-        setConflictBanner(bannerText);
-      } else if (err instanceof ApiError && err.details.detail) {
-        setErrorMessage(err.details.detail);
-      } else {
-        setErrorMessage(strings.errors.genericFailure);
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    void performSave();
-  };
-
-  const handleDelete = async () => {
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    try {
-      await onDelete(task.id, displayedVersionRef.current);
-      onClose();
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'TASK_VERSION_CONFLICT') {
-        const currentTask = err.details.currentTask;
-        if (currentTask) {
-          updateDisplayedVersion(currentTask.version);
-        }
-        const bannerText = conflictActorName
-          ? strings.conflict.banner(conflictActorName)
-          : strings.conflict.bannerFallback;
-        setConflictBanner(bannerText);
-      } else if (err instanceof ApiError && err.details.detail) {
-        setErrorMessage(err.details.detail);
-      } else {
-        setErrorMessage(strings.errors.genericFailure);
-      }
-    } finally {
-      setIsSubmitting(false);
-      setIsConfirmingDelete(false);
-    }
-  };
-
   return (
-    <aside
-      aria-label="Task details"
-      className="fixed top-12 right-0 h-[calc(100vh-48px)] w-full md:w-[420px] bg-surface-raised border-l border-rule shadow-floating z-30 flex flex-col transition-transform duration-drawer ease-out"
-    >
-      {/* Header with task title field and close button */}
+    <aside aria-label="Task details" className="fixed top-12 right-0 h-[calc(100vh-48px)] w-full md:w-[420px] bg-surface-raised border-l border-rule shadow-floating z-30 flex flex-col transition-transform duration-drawer ease-out">
       <div className="p-4 border-b border-rule flex items-center justify-between gap-3 flex-shrink-0">
         <div className="flex-1">
-          <label htmlFor="drawer-task-title" className="sr-only">
-            {strings.task.titleLabel}
-          </label>
+          <label htmlFor="drawer-task-title" className="sr-only">{strings.task.titleLabel}</label>
           <input
             id="drawer-task-title"
             type="text"
@@ -194,75 +81,26 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
         </button>
       </div>
 
-      {/* Body */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-        {/* Conflict presentation banner at the top of the drawer */}
         {conflictBanner && (
-          <div
-            data-testid="drawer-conflict-banner"
-            className="p-3 bg-warning-wash border border-rule rounded-sm text-[12.5px] leading-[18px] text-ink flex flex-col gap-2"
-          >
-            <p className="font-medium text-ink">{conflictBanner}</p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => void performSave()}
-                className="px-2.5 py-1 text-[12px] leading-4 font-medium rounded-sm bg-accent text-white hover:bg-accent/90 transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              >
-                {strings.conflict.applyAgain}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setConflictBanner(null);
-                  onClearConflict?.();
-                }}
-                className="px-2.5 py-1 text-[12px] leading-4 font-medium rounded-sm bg-surface-raised border border-rule-strong text-ink hover:bg-surface-canvas transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              >
-                {strings.conflict.dismiss}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {errorMessage && (
-          <Banner
-            message={errorMessage}
-            variant="warning"
-            onDismiss={() => setErrorMessage(null)}
+          <TaskDrawerConflictBanner
+            bannerText={conflictBanner}
+            onApplyAgain={() => void performSave()}
+            onDismiss={() => { setConflictBanner(null); onClearConflict?.(); }}
           />
         )}
 
-        {isConfirmingDelete ? (
-          <div className="p-3 border border-danger/40 bg-priority-high-wash/30 rounded-sm flex flex-col gap-2">
-            <p className="text-[14px] leading-5 font-medium text-ink">
-              {strings.task.confirmDeleteTitle}
-            </p>
-            <p className="text-[12.5px] leading-[18px] text-ink-muted">
-              {strings.task.confirmDeleteDescription}
-            </p>
-            <div className="flex items-center gap-2 pt-1">
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={isSubmitting}
-                onClick={handleDelete}
-              >
-                {isSubmitting ? strings.task.deleting : strings.task.confirmDeleteAction}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={isSubmitting}
-                onClick={() => setIsConfirmingDelete(false)}
-              >
-                {strings.task.cancel}
-              </Button>
-            </div>
-          </div>
-        ) : null}
+        {errorMessage && <Banner message={errorMessage} variant="warning" onDismiss={() => setErrorMessage(null)} />}
 
-        <form id="task-drawer-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {isConfirmingDelete && (
+          <TaskDeleteConfirmation
+            isSubmitting={isSubmitting}
+            onConfirm={handleDelete}
+            onCancel={() => setIsConfirmingDelete(false)}
+          />
+        )}
+
+        <form id="task-drawer-form" onSubmit={(e) => { e.preventDefault(); void performSave(); }} className="flex flex-col gap-4">
           <TextAreaField
             label={strings.task.descriptionLabel}
             value={description}
@@ -271,7 +109,6 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
             maxLength={4000}
           />
 
-          {/* Two column grid of remaining fields */}
           <div className="grid grid-cols-2 gap-3">
             <TextField
               label={strings.task.estimateLabel}
@@ -284,67 +121,26 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
               placeholder="e.g. 4.0"
             />
 
-            <SelectField
-              label={strings.task.priorityLabel}
-              value={priority}
-              onChange={(e) => setPriority(e.target.value as Priority)}
-            >
+            <SelectField label={strings.task.priorityLabel} value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
               <option value="LOW">{strings.task.priorityLow}</option>
               <option value="MEDIUM">{strings.task.priorityMedium}</option>
               <option value="HIGH">{strings.task.priorityHigh}</option>
             </SelectField>
 
-            <SelectField
-              label={strings.task.assigneeLabel}
-              value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
-            >
+            <SelectField label={strings.task.assigneeLabel} value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
               <option value="">{strings.task.unassigned}</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.displayName}
-                </option>
-              ))}
+              {members.map((m) => (<option key={m.id} value={m.id}>{m.displayName}</option>))}
             </SelectField>
 
-            <SelectField
-              label={strings.task.columnLabel}
-              value={columnId}
-              onChange={(e) => setColumnId(parseInt(e.target.value, 10))}
-            >
-              {columns.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+            <SelectField label={strings.task.columnLabel} value={columnId} onChange={(e) => setColumnId(parseInt(e.target.value, 10))}>
+              {columns.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </SelectField>
           </div>
         </form>
 
-        {/* Timestamps and displayed version */}
-        <div className="mt-4 pt-4 border-t border-rule text-[12.5px] leading-[18px] text-ink-muted flex flex-col gap-1">
-          <div className="flex justify-between">
-            <span>{strings.task.created}</span>
-            <span title={new Date(task.createdAt).toLocaleString()}>
-              {formatRelativeTime(task.createdAt)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>{strings.task.lastUpdated}</span>
-            <span title={new Date(task.updatedAt).toLocaleString()}>
-              {formatRelativeTime(task.updatedAt)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Version</span>
-            <span data-testid="drawer-displayed-version" className="tabular-nums">
-              {displayedVersion}
-            </span>
-          </div>
-        </div>
+        <TaskDrawerTimestamps createdAt={task.createdAt} updatedAt={task.updatedAt} version={displayedVersion} />
       </div>
 
-      {/* Sticky footer */}
       <div className="p-4 border-t border-rule bg-surface-raised flex items-center justify-between gap-2 flex-shrink-0">
         <Button
           type="button"
@@ -356,22 +152,10 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
           {strings.task.deleteTask}
         </Button>
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            disabled={isSubmitting}
-            onClick={onClose}
-          >
+          <Button type="button" variant="secondary" size="sm" disabled={isSubmitting} onClick={onClose}>
             {strings.task.cancel}
           </Button>
-          <Button
-            type="submit"
-            form="task-drawer-form"
-            variant="primary"
-            size="sm"
-            disabled={isSubmitting || !title.trim()}
-          >
+          <Button type="submit" form="task-drawer-form" variant="primary" size="sm" disabled={isSubmitting || !title.trim()}>
             {isSubmitting ? strings.task.saving : strings.task.saveChanges}
           </Button>
         </div>
