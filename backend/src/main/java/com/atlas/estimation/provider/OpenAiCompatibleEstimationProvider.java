@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -41,6 +42,7 @@ public class OpenAiCompatibleEstimationProvider implements EstimationProvider {
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public OpenAiCompatibleEstimationProvider(
             @Value("${atlas.llm.base-url:}") String baseUrl,
             @Value("${atlas.llm.model:}") String model,
