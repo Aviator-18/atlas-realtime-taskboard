@@ -12,6 +12,8 @@ import { TaskCardView } from './TaskCardView';
 import { TaskDrawer } from '../task/TaskDrawer';
 import { CreateTaskDialog } from '../task/CreateTaskDialog';
 import { useBoardDnd } from './useBoardDnd';
+import { useBoardSocket } from '../realtime/useBoardSocket';
+import { ConnectionIndicator } from './ConnectionIndicator';
 import { strings } from '../../strings';
 import type { BoardDetail, CreateTaskRequest, UpdateTaskRequest } from '../../api/types';
 
@@ -28,6 +30,8 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
   const [createColumnId, setCreateColumnId] = useState<number>(1);
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const { status: socketStatus } = useBoardSocket(boardId);
 
   const {
     data: board,
@@ -178,13 +182,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
             </Button>
           )}
 
-          <div
-            className="flex items-center gap-1.5 text-[12.5px] leading-[18px] text-accent select-none"
-            aria-live="polite"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
-            <span>{strings.boardView.live}</span>
-          </div>
+          <ConnectionIndicator status={socketStatus} />
         </div>
       </header>
 
