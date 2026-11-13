@@ -225,17 +225,25 @@ describe('applyOptimisticMove and replaceTaskInBoard', () => {
 
   it('optimistically moves card to top of target column', () => {
     const updated = applyOptimisticMove(initialBoard, 1, 20, null);
-    const col10 = updated.columns.find((c) => c.id === 10)!;
-    const col20 = updated.columns.find((c) => c.id === 20)!;
+    const col10 = updated.columns.find((c) => c.id === 10);
+    const col20 = updated.columns.find((c) => c.id === 20);
+
+    expect(col10).toBeDefined();
+    expect(col20).toBeDefined();
+    if (!col10 || !col20) return;
 
     expect(col10.tasks.map((t) => t.id)).toEqual([2]);
     expect(col20.tasks.map((t) => t.id)).toEqual([1, 3]);
-    expect(col20.tasks[0].columnId).toBe(20);
+    const firstTask = col20.tasks[0];
+    expect(firstTask?.columnId).toBe(20);
   });
 
   it('optimistically moves card after target card', () => {
     const updated = applyOptimisticMove(initialBoard, 1, 20, 3);
-    const col20 = updated.columns.find((c) => c.id === 20)!;
+    const col20 = updated.columns.find((c) => c.id === 20);
+
+    expect(col20).toBeDefined();
+    if (!col20) return;
 
     expect(col20.tasks.map((t) => t.id)).toEqual([3, 1]);
   });
@@ -247,12 +255,17 @@ describe('applyOptimisticMove and replaceTaskInBoard', () => {
     };
 
     const updated = replaceTaskInBoard(initialBoard, conflictTask);
-    const col10 = updated.columns.find((c) => c.id === 10)!;
-    const col20 = updated.columns.find((c) => c.id === 20)!;
+    const col10 = updated.columns.find((c) => c.id === 10);
+    const col20 = updated.columns.find((c) => c.id === 20);
+
+    expect(col10).toBeDefined();
+    expect(col20).toBeDefined();
+    if (!col10 || !col20) return;
 
     expect(col10.tasks.map((t) => t.id)).toEqual([2]);
     expect(col20.tasks.map((t) => t.id)).toEqual([3, 1]);
-    expect(col20.tasks[1].title).toBe('Task 1 updated remotely');
-    expect(col20.tasks[1].version).toBe(5);
+    const secondTask = col20.tasks[1];
+    expect(secondTask?.title).toBe('Task 1 updated remotely');
+    expect(secondTask?.version).toBe(5);
   });
 });
