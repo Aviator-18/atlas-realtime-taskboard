@@ -10,6 +10,46 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlas -d atlas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: atlas-backend
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/atlas
+      DB_USER: atlas
+      DB_PASSWORD: atlas
+      SPRING_PROFILES_ACTIVE: dev
+      ATLAS_JWT_SECRET: ${ATLAS_JWT_SECRET:-dev-insecure-secret-key-at-least-32-bytes-long}
+      ATLAS_CORS_ORIGINS: ${ATLAS_CORS_ORIGINS:-http://localhost:5173}
+      ATLAS_LLM_BASE_URL: ${ATLAS_LLM_BASE_URL:-}
+      ATLAS_LLM_MODEL: ${ATLAS_LLM_MODEL:-}
+      ATLAS_LLM_API_KEY: ${ATLAS_LLM_API_KEY:-}
+      ATLAS_LLM_TIMEOUT_MS: ${ATLAS_LLM_TIMEOUT_MS:-5000}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8080/ws}
+    container_name: atlas-frontend
+    ports:
+      - "5173:8080"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
