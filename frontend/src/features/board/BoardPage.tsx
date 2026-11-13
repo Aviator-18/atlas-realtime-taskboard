@@ -560,6 +560,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
       {board && (
         <CreateTaskDialog
           isOpen={isCreateOpen}
+          boardId={board.id}
           defaultColumnId={createColumnId}
           columns={board.columns}
           members={board.members}

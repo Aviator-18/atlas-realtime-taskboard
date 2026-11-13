@@ -4,6 +4,8 @@ import type {
   BoardSummary,
   CreateBoardRequest,
   CreateTaskRequest,
+  EstimateRequest,
+  EstimateResponse,
   HealthResponse,
   JoinBoardRequest,
   LoginRequest,
@@ -152,6 +154,12 @@ export const tasksApi = {
   delete: (taskId: number, version: number): Promise<void> =>
     request<void>(`/api/tasks/${taskId}?version=${version}`, {
       method: 'DELETE',
+    }),
+
+  estimate: (body: EstimateRequest): Promise<EstimateResponse> =>
+    request<EstimateResponse>('/api/tasks/estimate', {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
 };
 

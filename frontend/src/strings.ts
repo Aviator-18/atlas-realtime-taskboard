@@ -74,6 +74,16 @@ export const strings = {
     closeDrawer: 'Close',
     conflictPending: 'Conflict pending',
   },
+  estimation: {
+    suggestEstimate: 'Suggest estimate',
+    suggesting: 'Suggesting',
+    useSuggestion: 'Use suggestion',
+    ignore: 'Ignore',
+    suggestedByLlm: 'Suggested by the language model',
+    fallbackRationale: 'Estimated from keywords because the model was unavailable.',
+    rateLimited: 'Too many suggestions in a short time. Try again in a minute.',
+    summaryLine: (hours: number, priorityLabel: string) => `${hours} h, ${priorityLabel} priority`,
+  },
   cue: {
     addedBy: (name: string) => `Added by ${name}`,
     editedBy: (name: string) => `Edited by ${name}`,

@@ -3,12 +3,14 @@ import { Dialog } from '../../components/Dialog';
 import { TextField, TextAreaField, SelectField } from '../../components/TextField';
 import { Button } from '../../components/Button';
 import { Banner } from '../../components/Banner';
+import { EstimationSuggestionBlock } from './EstimationSuggestionBlock';
 import { strings } from '../../strings';
 import { ApiError } from '../../api/client';
 import type { BoardColumn, CreateTaskRequest, Member, Priority } from '../../api/types';
 
 export interface CreateTaskDialogProps {
   isOpen: boolean;
+  boardId?: number;
   defaultColumnId: number;
   columns: BoardColumn[];
   members: Member[];
@@ -18,6 +20,7 @@ export interface CreateTaskDialogProps {
 
 export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
   isOpen,
+  boardId,
   defaultColumnId,
   columns,
   onClose,
@@ -28,6 +31,10 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
   const [description, setDescription] = useState('');
   const [estimateHours, setEstimateHours] = useState('');
   const [priority, setPriority] = useState<Priority>('MEDIUM');
+  const [appliedSuggestion, setAppliedSuggestion] = useState<{
+    rationale?: string;
+    suggestionId?: number;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -39,9 +46,21 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
       setDescription('');
       setEstimateHours('');
       setPriority('MEDIUM');
+      setAppliedSuggestion(null);
       setErrorMessage(null);
     }
   }, [isOpen, defaultColumnId]);
+
+  const handleApplySuggestion = (
+    suggestedHours: number,
+    suggestedPriority: Priority,
+    rationale: string,
+    suggestionId?: number,
+  ) => {
+    setEstimateHours(String(suggestedHours));
+    setPriority(suggestedPriority);
+    setAppliedSuggestion({ rationale, suggestionId });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +84,8 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
       description: description.trim() ? description : undefined,
       estimateHours: parsedEstimate,
       priority,
+      rationale: appliedSuggestion?.rationale,
+      suggestionId: appliedSuggestion?.suggestionId,
     };
 
     setIsSubmitting(true);
@@ -122,6 +143,15 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
           rows={3}
           maxLength={4000}
         />
+
+        {boardId != null && (
+          <EstimationSuggestionBlock
+            boardId={boardId}
+            title={title}
+            description={description}
+            onApply={handleApplySuggestion}
+          />
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <TextField
