@@ -98,7 +98,7 @@ export function calculateTaskMove(
     const lastTask = targetColumn.tasks[targetColumn.tasks.length - 1];
     return {
       columnId: targetColumn.id,
-      afterTaskId: lastTask.id,
+      afterTaskId: lastTask ? lastTask.id : null,
     };
   }
 
@@ -123,11 +123,15 @@ export function calculateTaskMove(
     }
 
     const reordered = [...sourceColumn.tasks];
-    const [moved] = reordered.splice(fromIndex, 1);
+    const moved = reordered.splice(fromIndex, 1)[0];
+    if (!moved) {
+      return null;
+    }
     reordered.splice(toIndex, 0, moved);
 
     const newIndex = reordered.findIndex((t) => t.id === activeTaskId);
-    const afterTaskId = newIndex > 0 ? reordered[newIndex - 1].id : null;
+    const precedingTask = newIndex > 0 ? reordered[newIndex - 1] : undefined;
+    const afterTaskId = precedingTask ? precedingTask.id : null;
 
     return {
       columnId: targetColumn.id,
@@ -145,7 +149,8 @@ export function calculateTaskMove(
   targetWithActive.splice(toIndex, 0, activeTask);
 
   const newIndex = toIndex;
-  const afterTaskId = newIndex > 0 ? targetWithActive[newIndex - 1].id : null;
+  const precedingTask = newIndex > 0 ? targetWithActive[newIndex - 1] : undefined;
+  const afterTaskId = precedingTask ? precedingTask.id : null;
 
   return {
     columnId: targetColumn.id,

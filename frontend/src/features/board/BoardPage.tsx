@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { boardsApi, tasksApi } from '../../api/client';
 import { useRouter } from '../../router/routerContext';
@@ -7,8 +8,10 @@ import { Button } from '../../components/Button';
 import { Banner } from '../../components/Banner';
 import { BoardColumnView } from './BoardColumnView';
 import { BoardSkeleton } from './BoardSkeleton';
+import { TaskCardView } from './TaskCardView';
 import { TaskDrawer } from '../task/TaskDrawer';
 import { CreateTaskDialog } from '../task/CreateTaskDialog';
+import { useBoardDnd } from './useBoardDnd';
 import { strings } from '../../strings';
 import type { BoardDetail, CreateTaskRequest, UpdateTaskRequest } from '../../api/types';
 
@@ -34,6 +37,22 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
   } = useQuery({
     queryKey: ['board', boardId],
     queryFn: () => boardsApi.get(boardId),
+  });
+
+  const {
+    sensors,
+    activeTask,
+    overDropId,
+    conflictTaskIds,
+    announcements,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    handleDragCancel,
+  } = useBoardDnd({
+    boardId,
+    board,
+    onError: (msg) => setActionError(msg),
   });
 
   const selectedTask = React.useMemo(() => {
@@ -65,7 +84,6 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
     setActionError(null);
     const createdTask = await tasksApi.create(boardId, request);
 
-    // Update TanStack Query cache directly with the server response
     queryClient.setQueryData<BoardDetail>(['board', boardId], (old) => {
       if (!old) return old;
       return {
@@ -87,30 +105,19 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
     setActionError(null);
     const updatedTask = await tasksApi.update(taskId, updates);
 
-    // Update TanStack Query cache directly with the server response
     queryClient.setQueryData<BoardDetail>(['board', boardId], (old) => {
       if (!old) return old;
       return {
         ...old,
         columns: old.columns.map((col) => {
-          // Remove from old column if moved
           const filteredTasks = col.tasks.filter((t) => t.id !== taskId);
-
           if (col.id === updatedTask.columnId) {
-            // Add to new or existing column and keep sorted by position
             const newTasks = [...filteredTasks, updatedTask].sort(
               (a, b) => a.position - b.position,
             );
-            return {
-              ...col,
-              tasks: newTasks,
-            };
+            return { ...col, tasks: newTasks };
           }
-
-          return {
-            ...col,
-            tasks: filteredTasks,
-          };
+          return { ...col, tasks: filteredTasks };
         }),
       };
     });
@@ -120,7 +127,6 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
     setActionError(null);
     await tasksApi.delete(taskId, version);
 
-    // Update cache directly by removing task
     queryClient.setQueryData<BoardDetail>(['board', boardId], (old) => {
       if (!old) return old;
       return {
@@ -153,7 +159,6 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Board members */}
           {board && board.members && (
             <div className="flex items-center -space-x-1">
               {board.members.map((member) => (
@@ -162,7 +167,6 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
             </div>
           )}
 
-          {/* Copy invite code */}
           {board && (
             <Button
               size="sm"
@@ -174,7 +178,6 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
             </Button>
           )}
 
-          {/* Connection state: 6 px dot in --accent followed by text */}
           <div
             className="flex items-center gap-1.5 text-[12.5px] leading-[18px] text-accent select-none"
             aria-live="polite"
@@ -212,21 +215,47 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
             </Button>
           </div>
         ) : (
-          <div className="flex-1 overflow-x-auto p-4 flex gap-3 items-start">
-            {board.columns.map((column) => (
-              <BoardColumnView
-                key={column.id}
-                column={column}
-                members={board.members}
-                selectedTaskId={selectedTaskId}
-                onSelectTask={(task) => setSelectedTaskId(task.id)}
-                onAddTask={handleAddTask}
-              />
-            ))}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            accessibility={{ announcements }}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <div className="flex-1 overflow-x-auto p-4 flex gap-3 items-start">
+              {board.columns.map((column) => (
+                <BoardColumnView
+                  key={column.id}
+                  column={column}
+                  members={board.members}
+                  selectedTaskId={selectedTaskId}
+                  onSelectTask={(task) => setSelectedTaskId(task.id)}
+                  onAddTask={handleAddTask}
+                  activeDragId={activeTask ? `task-${activeTask.id}` : null}
+                  overDropId={overDropId}
+                  conflictTaskIds={conflictTaskIds}
+                />
+              ))}
+            </div>
+
+            <DragOverlay>
+              {activeTask ? (
+                <div className="w-[276px]">
+                  <TaskCardView
+                    task={activeTask}
+                    members={board.members}
+                    isSelected={activeTask.id === selectedTaskId}
+                    isOverlay
+                  />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         )}
 
-        {/* Task Details Drawer (board remains visible behind it) */}
+        {/* Task Details Drawer */}
         {board && selectedTask && (
           <TaskDrawer
             task={selectedTask}
