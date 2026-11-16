@@ -21,19 +21,24 @@ export const SignInPage: React.FC = () => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!email.trim() || !password) {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await login({ email: email.trim(), password });
+      await login({ email: trimmedEmail, password: trimmedPassword });
       navigate('/boards', { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.code === 'INVALID_CREDENTIALS') {
         setErrorMessage(strings.auth.invalidCredentials);
       } else if (err instanceof ApiError && err.details.detail) {
         setErrorMessage(err.details.detail);
+      } else if (err instanceof TypeError || (err instanceof Error && err.message.toLowerCase().includes('fetch'))) {
+        setErrorMessage('Cannot connect to the backend server. Please verify that your backend service is running and accessible.');
       } else {
         setErrorMessage(strings.auth.invalidCredentials);
       }

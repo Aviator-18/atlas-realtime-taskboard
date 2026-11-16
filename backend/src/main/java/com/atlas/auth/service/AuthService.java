@@ -40,14 +40,15 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        String trimmedEmail = request.email().trim();
+        String trimmedEmail = request.email() != null ? request.email().trim() : "";
         if (userRepository.existsByEmailIgnoreCase(trimmedEmail)) {
             throw new DuplicateEmailException("Email is already taken");
         }
 
-        String passwordHash = passwordEncoder.encode(request.password());
+        String trimmedPassword = request.password() != null ? request.password().trim() : "";
+        String passwordHash = passwordEncoder.encode(trimmedPassword);
         UserEntity user = new UserEntity(
-                request.displayName().trim(),
+                request.displayName() != null ? request.displayName().trim() : "",
                 trimmedEmail,
                 passwordHash,
                 clock.instant()
@@ -67,17 +68,18 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        String trimmedEmail = request.email().trim();
+        String trimmedEmail = request.email() != null ? request.email().trim() : "";
+        String trimmedPassword = request.password() != null ? request.password().trim() : "";
         Optional<UserEntity> userOpt = userRepository.findByEmailIgnoreCase(trimmedEmail);
 
         if (userOpt.isEmpty()) {
             // Run password check against dummy hash to prevent timing attacks
-            passwordEncoder.matches(request.password(), DUMMY_HASH);
+            passwordEncoder.matches(trimmedPassword, DUMMY_HASH);
             throw new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE);
         }
 
         UserEntity user = userOpt.get();
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (!passwordEncoder.matches(trimmedPassword, user.getPasswordHash())) {
             throw new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE);
         }
 

@@ -22,16 +22,20 @@ export const RegisterPage: React.FC = () => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!displayName.trim() || !email.trim() || !password) {
+    const trimmedDisplayName = displayName.trim();
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedDisplayName || !trimmedEmail || !trimmedPassword) {
       return;
     }
 
     setIsSubmitting(true);
     try {
       await register({
-        displayName: displayName.trim(),
-        email: email.trim(),
-        password,
+        displayName: trimmedDisplayName,
+        email: trimmedEmail,
+        password: trimmedPassword,
       });
       navigate('/boards', { replace: true });
     } catch (err) {
@@ -39,6 +43,8 @@ export const RegisterPage: React.FC = () => {
         setErrorMessage(strings.auth.emailTaken);
       } else if (err instanceof ApiError && err.details.detail) {
         setErrorMessage(err.details.detail);
+      } else if (err instanceof TypeError || (err instanceof Error && err.message.toLowerCase().includes('fetch'))) {
+        setErrorMessage('Cannot connect to the backend server. Please verify that your backend service is running and accessible.');
       } else {
         setErrorMessage(strings.errors.genericFailure);
       }
