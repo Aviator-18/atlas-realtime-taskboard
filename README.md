@@ -2,6 +2,35 @@
 
 Atlas is a real-time collaborative task board featuring version-checked concurrent edits, live WebSocket synchronisation, and AI-assisted effort estimation with deterministic heuristic fallbacks.
 
+## Live demo
+
+- **Web application:** [https://atlas-taskboard.up.railway.app](https://atlas-taskboard.up.railway.app)
+- **Deployment platform:** Railway (PostgreSQL 16, Java 21 Spring Boot backend, and Nginx React frontend)
+
+### Demo credentials
+
+The live deployment is pre-seeded with the development dataset and demo accounts:
+
+| User | Email | Password | Role |
+|---|---|---|---|
+| Priya Nair | `priya@example.test` | `AtlasDev2026!` | Board Owner |
+| Arjun Mehta | `arjun@example.test` | `AtlasDev2026!` | Member |
+| Sana Qureshi | `sana@example.test` | `AtlasDev2026!` | Member |
+
+- **Pre-loaded board:** Checkout API, sprint 12
+- **Board invite code:** `PAYSPR12`
+- **Pre-loaded tasks:** 14 tasks with realistic technical descriptions, historical estimates in hours, priorities, and audit timestamps.
+
+---
+
+## Key capabilities
+
+1. **Optimistic locking and conflict preservation:** Every task mutation (drag-and-drop move, title edit, description update, priority change) submits its expected version. Concurrent writes that collide are rejected with HTTP 409 `TASK_VERSION_CONFLICT`. The frontend immediately displays a conflict notification explaining who made the modification, reverts the stale card to the server state, and preserves the active user's uncommitted draft in the drawer so work is never silently lost.
+2. **Real-time synchronisation:** Task movements, creations, and edits are broadcast over a STOMP WebSocket channel (`/topic/boards/{boardId}`) strictly after database transactions commit (`AFTER_COMMIT`), with visual cues ("Moved by Arjun") highlighting active changes across peer browsers.
+3. **AI effort estimation:** Estimates effort in hours (0.5 to 40.0) and suggests priorities based on task context and completed team tasks. Powered by Google Gemini (OpenAI-compatible endpoint) with automatic fallback to a deterministic keyword-based heuristic estimator when external models are unavailable or rate-limited.
+
+---
+
 ## Stack and pinned versions
 
 ### Backend
@@ -11,6 +40,8 @@ Atlas is a real-time collaborative task board featuring version-checked concurre
 - PostgreSQL: 16 (`postgres:16-alpine`)
 - Flyway: 10.20.1
 - PostgreSQL JDBC Driver: 42.7.5
+- Nimbus JOSE + JWT: 9.37.3
+- Spring Security: 6.4.3
 - Testcontainers: 1.20.4
 
 ### Frontend
@@ -29,91 +60,65 @@ Atlas is a real-time collaborative task board featuring version-checked concurre
 - Testing Library (React: 16.2.0, Jest DOM: 6.6.3, User Event: 14.6.1)
 - ESLint: 9.21.0
 
-## Running with Docker Compose
+---
 
-Running the full application stack (PostgreSQL database, backend, and static frontend):
+## Architecture summary
 
-```bash
-# 1. Copy sample environment variables
-cp .env.example .env
+Writes travel over REST. Live updates travel over a WebSocket (STOMP) channel that only the server publishes to. The two are linked by one rule: an event is published only after the database transaction that caused it has committed.
 
-# 2. Build and start containers
-docker compose up --build
+```mermaid
+flowchart TD
+    Browser["React client<br/>TanStack Query + STOMP client"]
+    API["REST controllers<br/>JWT filter, validation, problem details"]
+    Svc["Services<br/>board, task, estimation"]
+    DB[("PostgreSQL<br/>Flyway migrations")]
+    Pub["Event publisher<br/>after-commit listener"]
+    Broker["STOMP broker<br/>/topic/boards/{boardId}"]
+    LLM["LLM provider<br/>Google Gemini / OpenAI-compatible"]
+
+    Browser -->|"REST + Bearer token"| API
+    API --> Svc
+    Svc --> DB
+    Svc -->|"domain event"| Pub
+    Pub --> Broker
+    Broker -->|"WebSocket push"| Browser
+    Svc -->|"estimation request, 5 s timeout"| LLM
 ```
 
-Services will be available at:
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:8080`
-- PostgreSQL: `localhost:5432`
+---
 
-### Pre-seeded development dataset
+## Conflict guarantee
 
-When starting in the `dev` profile (default in Docker Compose and local development), a seed runner automatically creates:
-- **Board:** "Checkout API, sprint 12" (Invite code: `PAYSPR12`)
-- **14 tasks:** 6 completed tasks in "Done" with real historical estimates and completion timestamps, 4 in "In progress", and 4 in "To do"
-- **Seed users** (all using development password `AtlasDev2026!`):
-  - Priya Nair: `priya@example.test` (Owner)
-  - Arjun Mehta: `arjun@example.test` (Member)
-  - Sana Qureshi: `sana@example.test` (Member)
+An accepted write was computed from the latest committed version of that task, so no committed write is ever overwritten without the writer having seen it. Every update, move, and deletion sends the version the client last observed. Stale mutations fail immediately either during early version comparison or through Hibernate optimistic locking (`@Version`), returning HTTP 409 `TASK_VERSION_CONFLICT` along with the latest task representation so the client can present the conflict and reconcile without silent data loss.
 
-## Local development setup
+```mermaid
+sequenceDiagram
+    participant A as Client A
+    participant B as Client B
+    participant S as Server
+    participant D as PostgreSQL
 
-### 1. Database
-
-Start PostgreSQL 16 via Docker Compose:
-
-```bash
-docker compose up -d db
+    A->>S: PATCH /tasks/7 (version 3, new title)
+    B->>S: PATCH /tasks/7 (version 3, new priority)
+    S->>D: UPDATE ... WHERE id=7 AND version=3
+    D-->>S: 1 row updated (version now 4)
+    S-->>A: 200 task (version 4)
+    S->>D: UPDATE ... WHERE id=7 AND version=3
+    D-->>S: 0 rows updated
+    S-->>B: 409 TASK_VERSION_CONFLICT + currentTask (version 4)
+    S-->>B: push TASK_UPDATED (version 4) over WebSocket
+    Note over B: Card reverts to version 4, banner explains
 ```
 
-### 2. Backend
-
-From the `backend` directory:
-
-```bash
-# Unix / macOS
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
-
-# Windows
-.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev
-```
-
-The server listens on `http://localhost:8080`. Health check endpoint: `http://localhost:8080/actuator/health`.
-
-### 3. Frontend
-
-From the `frontend` directory:
-
-```bash
-npm install
-npm run dev
-```
-
-The Vite dev server starts at `http://localhost:5173`.
-
-## Environment variables
-
-| Variable | Description | Default |
-|---|---|---|
-| `DB_URL` | JDBC database connection URL | `jdbc:postgresql://localhost:5432/atlas` |
-| `DB_USER` | PostgreSQL user | `atlas` |
-| `DB_PASSWORD` | PostgreSQL password | `atlas` |
-| `ATLAS_JWT_SECRET` | Secret key for signing HS256 JWTs (minimum 32 bytes) | `dev-insecure-secret-key-at-least-32-bytes-long` |
-| `ATLAS_CORS_ORIGINS` | Permitted browser origins for CORS | `http://localhost:5173` |
-| `ATLAS_LLM_BASE_URL` | Base URL for OpenAI-compatible completions | *(empty: triggers keyword fallback)* |
-| `ATLAS_LLM_MODEL` | Model identifier | *(empty)* |
-| `ATLAS_LLM_API_KEY` | Model provider API key | *(empty)* |
-| `ATLAS_LLM_TIMEOUT_MS` | Timeout in milliseconds for estimation requests | `5000` |
-| `VITE_API_BASE_URL` | Base API URL for frontend | `http://localhost:8080` |
-| `VITE_WS_URL` | WebSocket URL for frontend | `ws://localhost:8080/ws` |
+---
 
 ## Project structure
 
 ```
 atlas/
   AGENTS.md                 # Project working rules and quality agreements
-  README.md                 # Repository guide and run instructions
-  docker-compose.yml        # Docker compose definition (db, backend, frontend)
+  README.md                 # Repository guide and live deployment references
+  docker-compose.yml        # Multi-container production deployment definition
   .env.example              # Sample environment variables
   docs/
     SPEC.md                 # Product specifications and acceptance criteria
@@ -149,82 +154,30 @@ atlas/
       styles/               # Design tokens and Tailwind CSS imports
 ```
 
-## Running tests
+---
+
+## Automated test suites
+
+Both suites run on every commit through GitHub Actions Continuous Integration.
 
 ### Backend tests
 
-Integration tests run against PostgreSQL via Testcontainers. Ensure Docker is running.
+Unit and web integration tests (including optimistic concurrency verification and Testcontainers PostgreSQL integration):
 
 ```bash
 cd backend
-
-# Unix / macOS
-./mvnw test
-
-# Windows
-.\mvnw.cmd test
+./mvnw test        # Unix / macOS
+.\mvnw.cmd test    # Windows
 ```
 
 ### Frontend tests and quality checks
 
-From the `frontend` directory:
+Unit, component, reconciliation, and integration tests with strict TypeScript compilation:
 
 ```bash
-# Run unit and component test suite
-npm test
-
-# Check code style and rules
-npm run lint
-
-# Verify TypeScript types in strict mode
-npm run typecheck
-
-# Validate production build bundle
-npm run build
-```
-
-## Architecture summary
-
-Writes travel over REST. Live updates travel over a WebSocket (STOMP) channel that only the server publishes to. The two are linked by one rule: an event is published only after the database transaction that caused it has committed.
-
-```mermaid
-flowchart TD
-    Browser["React client<br/>TanStack Query + STOMP client"]
-    API["REST controllers<br/>JWT filter, validation, problem details"]
-    Svc["Services<br/>board, task, estimation"]
-    DB[("PostgreSQL<br/>Flyway migrations")]
-    Pub["Event publisher<br/>after-commit listener"]
-    Broker["STOMP broker<br/>/topic/boards/{boardId}"]
-    LLM["LLM provider<br/>OpenAI-compatible API"]
-
-    Browser -->|"REST + Bearer token"| API
-    API --> Svc
-    Svc --> DB
-    Svc -->|"domain event"| Pub
-    Pub --> Broker
-    Broker -->|"WebSocket push"| Browser
-    Svc -->|"estimation request, 5 s timeout"| LLM
-```
-
-## Conflict guarantee
-
-An accepted write was computed from the latest committed version of that task, so no committed write is ever overwritten without the writer having seen it. Every update, move, and deletion sends the version the client last observed. Stale mutations fail immediately either during early version comparison or through Hibernate optimistic locking (`@Version`), returning HTTP 409 `TASK_VERSION_CONFLICT` along with the latest task representation so the client can present the conflict and reconcile without silent data loss.
-
-```mermaid
-sequenceDiagram
-    participant A as Client A
-    participant B as Client B
-    participant S as Server
-    participant D as PostgreSQL
-
-    A->>S: PATCH /tasks/7 (version 3, new title)
-    B->>S: PATCH /tasks/7 (version 3, new priority)
-    S->>D: UPDATE ... WHERE id=7 AND version=3
-    D-->>S: 1 row updated (version now 4)
-    S-->>A: 200 task (version 4)
-    S->>D: UPDATE ... WHERE id=7 AND version=3
-    D-->>S: 0 rows updated
-    S-->>B: 409 TASK_VERSION_CONFLICT + currentTask (version 4)
-    S-->>B: push TASK_UPDATED (version 4) over WebSocket
-    Note over B: Card reverts to version 4, banner explains
+cd frontend
+npm test           # Run 61 Vitest unit and component tests
+npm run lint       # ESLint rules check
+npm run typecheck  # TypeScript strict mode verification
+npm run build      # Production bundle verification
 ```
