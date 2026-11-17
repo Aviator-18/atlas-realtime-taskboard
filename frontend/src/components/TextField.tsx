@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import React, { useId, useState, useRef, useCallback, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 
 export interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -67,10 +67,37 @@ export interface TextAreaFieldProps extends React.TextareaHTMLAttributes<HTMLTex
 }
 
 export const TextAreaField = React.forwardRef<HTMLTextAreaElement, TextAreaFieldProps>(
-  ({ label, error, id, className = '', rows = 3, ...props }, ref) => {
+  ({ label, error, id, className = '', rows = 3, onInput, ...props }, ref) => {
     const generatedId = useId();
     const inputId = id ?? generatedId;
     const errorId = error ? `${inputId}-error` : undefined;
+    const internalRef = useRef<HTMLTextAreaElement | null>(null);
+
+    const handleRef = (el: HTMLTextAreaElement | null) => {
+      internalRef.current = el;
+      if (typeof ref === 'function') {
+        ref(el);
+      } else if (ref) {
+        ref.current = el;
+      }
+    };
+
+    const adjustHeight = useCallback(() => {
+      const el = internalRef.current;
+      if (el) {
+        el.style.height = 'auto';
+        el.style.height = `${Math.max(el.scrollHeight, 72)}px`;
+      }
+    }, []);
+
+    useEffect(() => {
+      adjustHeight();
+    }, [props.value, adjustHeight]);
+
+    const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
+      adjustHeight();
+      onInput?.(e);
+    };
 
     return (
       <div className="flex flex-col gap-1 w-full">
@@ -80,12 +107,13 @@ export const TextAreaField = React.forwardRef<HTMLTextAreaElement, TextAreaField
           </label>
         )}
         <textarea
-          ref={ref}
+          ref={handleRef}
           id={inputId}
           rows={rows}
+          onInput={handleInput}
           aria-invalid={error ? 'true' : 'false'}
           aria-describedby={errorId}
-          className={`p-2 text-[14px] leading-5 text-ink bg-surface-raised border rounded-sm transition-all duration-fast ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 resize-y disabled:bg-surface-canvas disabled:text-ink-muted ${
+          className={`p-2 text-[14px] leading-5 text-ink bg-surface-raised border rounded-sm transition-all duration-fast ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 resize-none overflow-hidden disabled:bg-surface-canvas disabled:text-ink-muted ${
             error ? 'border-danger' : 'border-rule-strong hover:border-ink-muted'
           } ${className}`}
           {...props}

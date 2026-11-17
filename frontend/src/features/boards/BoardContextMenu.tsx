@@ -25,9 +25,9 @@ export const BoardContextMenu: React.FC<BoardContextMenuProps> = ({
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click or right click outside
+  // Close on outside click
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
+    const handleOutsideClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
       }
@@ -38,13 +38,15 @@ export const BoardContextMenu: React.FC<BoardContextMenuProps> = ({
       }
     };
 
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('contextmenu', handleClick);
-    window.addEventListener('keydown', handleKeyDown);
+    // Attach after current event dispatch to avoid immediate dismissal
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleOutsideClick);
+      window.addEventListener('keydown', handleKeyDown);
+    }, 10);
 
     return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('contextmenu', handleClick);
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleOutsideClick);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);

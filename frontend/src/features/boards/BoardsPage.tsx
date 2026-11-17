@@ -162,6 +162,7 @@ export const BoardsPage: React.FC = () => {
                   onClick={() => navigate(`/boards/${board.id}`)}
                   onContextMenu={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     setContextMenu({
                       board,
                       x: e.clientX,

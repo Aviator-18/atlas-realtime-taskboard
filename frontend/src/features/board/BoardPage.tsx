@@ -90,6 +90,26 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
     }
   };
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Backspace') {
+        const target = e.target as HTMLElement | null;
+        const isEditing =
+          target instanceof HTMLInputElement ||
+          target instanceof HTMLTextAreaElement ||
+          target instanceof HTMLSelectElement ||
+          target?.isContentEditable;
+
+        if (!isEditing && selectedTaskId === null && !isCreateOpen) {
+          e.preventDefault();
+          navigate('/boards');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate, selectedTaskId, isCreateOpen]);
+
   return (
     <div className="min-h-screen bg-surface-canvas flex flex-col text-ink">
       <BoardHeader

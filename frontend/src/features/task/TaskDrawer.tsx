@@ -8,6 +8,7 @@ import { strings } from '../../strings';
 import { TaskDeleteConfirmation } from './TaskDeleteConfirmation';
 import { TaskDrawerConflictBanner } from './TaskDrawerConflictBanner';
 import { TaskDrawerTimestamps } from './TaskDrawerTimestamps';
+import { EstimationSuggestionBlock } from './EstimationSuggestionBlock';
 import { useTaskDrawerForm } from './useTaskDrawerForm';
 
 export interface TaskDrawerProps {
@@ -87,19 +88,14 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
               className="w-full text-[18px] leading-[26px] font-semibold text-ink bg-surface-raised border border-rule-strong hover:border-ink-muted rounded-sm px-2.5 h-8 transition-colors duration-fast outline-none focus-visible:ring-2 focus-visible:ring-accent"
             />
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <kbd className="hidden sm:inline-block text-[10px] leading-3 font-mono text-ink-muted border border-rule px-1.5 py-0.5 rounded bg-surface-lane select-none">
-              Esc
-            </kbd>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={strings.task.closeDrawer}
-              className="p-1 rounded-sm text-ink-muted hover:text-ink hover:bg-surface-canvas transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0"
-            >
-              <X size={16} strokeWidth={1.5} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={strings.task.closeDrawer}
+            className="p-1 rounded-sm text-ink-muted hover:text-ink hover:bg-surface-canvas transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0"
+          >
+            <X size={16} strokeWidth={1.5} />
+          </button>
         </div>
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
@@ -126,8 +122,18 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
             label={strings.task.descriptionLabel}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={4}
+            rows={3}
             maxLength={4000}
+          />
+
+          <EstimationSuggestionBlock
+            boardId={task.boardId}
+            title={title}
+            description={description}
+            onApply={(suggestedHours, suggestedPriority) => {
+              setEstimateHours(String(suggestedHours));
+              setPriority(suggestedPriority);
+            }}
           />
 
           <div className="grid grid-cols-2 gap-3">

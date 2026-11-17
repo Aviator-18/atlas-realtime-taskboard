@@ -11,6 +11,34 @@ export const MemberDropdown: React.FC<MemberDropdownProps> = ({ members }) => {
   const [showAll, setShowAll] = useState(false);
   const [hoveredMemberId, setHoveredMemberId] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setIsOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+    }
+    closeTimerRef.current = setTimeout(() => {
+      setIsOpen(false);
+      setHoveredMemberId(null);
+    }, 250);
+  };
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
 
   // Sort members: OWNER first, then alphabetical by displayName
   const sortedMembers = useMemo(() => {
@@ -58,11 +86,8 @@ export const MemberDropdown: React.FC<MemberDropdownProps> = ({ members }) => {
     <div
       ref={containerRef}
       className="relative inline-block"
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => {
-        setIsOpen(false);
-        setHoveredMemberId(null);
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <button
         type="button"
@@ -86,12 +111,15 @@ export const MemberDropdown: React.FC<MemberDropdownProps> = ({ members }) => {
         <div
           role="menu"
           aria-label="Board members list"
-          className="absolute right-0 top-full mt-2 w-72 bg-surface-raised border border-rule rounded-md shadow-floating p-3 z-30 flex flex-col gap-2 transition-all duration-150 animate-in fade-in slide-in-from-top-1"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          className="absolute right-0 top-full pt-1.5 w-72 z-30"
         >
-          <div className="flex items-center justify-between pb-1.5 border-b border-rule text-[12px] text-ink-muted">
-            <span className="font-semibold text-ink">Members</span>
-            <span className="tabular-nums">{members.length} total</span>
-          </div>
+          <div className="bg-surface-raised border border-rule rounded-md shadow-floating p-3 flex flex-col gap-2 transition-all duration-150 animate-in fade-in slide-in-from-top-1">
+            <div className="flex items-center justify-between pb-1.5 border-b border-rule text-[12px] text-ink-muted">
+              <span className="font-semibold text-ink">Members</span>
+              <span className="tabular-nums">{members.length} total</span>
+            </div>
 
           <div className="flex flex-col gap-1 max-h-56 overflow-y-auto">
             {displayedMembers.map((member) => (
@@ -150,6 +178,7 @@ export const MemberDropdown: React.FC<MemberDropdownProps> = ({ members }) => {
               <span>Permissions: {activeHoveredMember.role === 'OWNER' ? 'Full board management' : 'Create, edit and reorder tasks'}</span>
             </div>
           )}
+          </div>
         </div>
       )}
     </div>
