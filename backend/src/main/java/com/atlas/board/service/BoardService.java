@@ -21,6 +21,7 @@ import com.atlas.task.persistence.TaskRepository;
 import com.atlas.task.service.TaskMapper;
 import com.atlas.task.web.TaskResponse;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -186,6 +187,46 @@ public class BoardService {
                 .toList();
 
         return new BoardDetailResponse(board.getId(), board.getName(), board.getInviteCode(), members, columns);
+    }
+
+    @Transactional
+    public void deleteBoard(Long boardId, Long userId) {
+        BoardEntity board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new BoardNotFoundException("Board not found: " + boardId));
+
+        if (!board.getOwnerId().equals(userId)) {
+            throw new AccessDeniedException("Only the board owner can delete this board");
+        }
+
+        taskRepository.deleteAll(taskRepository.findByBoardId(boardId));
+        boardColumnRepository.deleteAll(boardColumnRepository.findByBoardIdOrderByPositionAsc(boardId));
+        boardMemberRepository.deleteAll(boardMemberRepository.findByIdBoardId(boardId));
+        boardRepository.delete(board);
+    }
+
+    @Transactional
+    public void leaveBoard(Long boardId, Long userId) {
+        BoardEntity board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new BoardNotFoundException("Board not found: " + boardId));
+
+        if (board.getOwnerId().equals(userId)) {
+            throw new IllegalArgumentException("Board owner cannot leave the board. Delete the board instead.");
+        }
+
+        com.atlas.board.persistence.BoardMemberId memberId = new com.atlas.board.persistence.BoardMemberId(boardId, userId);
+        if (!boardMemberRepository.existsById(memberId)) {
+            throw new NotAMemberException("User is not a member of board: " + boardId);
+        }
+
+        List<TaskEntity> assignedTasks = taskRepository.findByBoardId(boardId).stream()
+                .filter(t -> userId.equals(t.getAssigneeId()))
+                .toList();
+        for (TaskEntity task : assignedTasks) {
+            task.setAssigneeId(null);
+        }
+        taskRepository.saveAll(assignedTasks);
+
+        boardMemberRepository.deleteById(memberId);
     }
 
     private String generateUniqueInviteCode() {

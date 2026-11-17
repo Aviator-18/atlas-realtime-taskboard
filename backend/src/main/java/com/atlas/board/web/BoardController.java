@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,5 +52,21 @@ public class BoardController {
                                         @PathVariable("boardId") Long boardId) {
         Long userId = Long.valueOf(jwt.getSubject());
         return boardService.getBoardDetail(boardId, userId);
+    }
+
+    @DeleteMapping("/{boardId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteBoard(@AuthenticationPrincipal Jwt jwt,
+                            @PathVariable("boardId") Long boardId) {
+        Long userId = Long.valueOf(jwt.getSubject());
+        boardService.deleteBoard(boardId, userId);
+    }
+
+    @PostMapping("/{boardId}/leave")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void leaveBoard(@AuthenticationPrincipal Jwt jwt,
+                           @PathVariable("boardId") Long boardId) {
+        Long userId = Long.valueOf(jwt.getSubject());
+        boardService.leaveBoard(boardId, userId);
     }
 }
