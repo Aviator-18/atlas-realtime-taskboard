@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ExternalLink, Copy, Link, LogOut } from 'lucide-react';
+import { ExternalLink, Copy, Link, Settings } from 'lucide-react';
 import type { BoardSummary } from '../../api/types';
 
 export interface BoardContextMenuProps {
@@ -10,7 +10,7 @@ export interface BoardContextMenuProps {
   onOpen: (board: BoardSummary) => void;
   onCopyInvite: (code?: string) => void;
   onCopyLink: (boardId: number) => void;
-  onLeave: (board: BoardSummary) => void;
+  onOpenSettings: (board: BoardSummary) => void;
 }
 
 export const BoardContextMenu: React.FC<BoardContextMenuProps> = ({
@@ -21,7 +21,7 @@ export const BoardContextMenu: React.FC<BoardContextMenuProps> = ({
   onOpen,
   onCopyInvite,
   onCopyLink,
-  onLeave,
+  onOpenSettings,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -114,13 +114,13 @@ export const BoardContextMenu: React.FC<BoardContextMenuProps> = ({
         type="button"
         role="menuitem"
         onClick={() => {
-          onLeave(board);
+          onOpenSettings(board);
           onClose();
         }}
-        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-danger/10 text-danger text-left transition-colors duration-fast focus-visible:outline-none focus-visible:bg-danger/10"
+        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-canvas text-left transition-colors duration-fast focus-visible:outline-none focus-visible:bg-surface-canvas"
       >
-        <LogOut size={14} />
-        <span>{board.role === 'OWNER' ? 'Board settings' : 'Leave board'}</span>
+        <Settings size={14} className="text-ink-muted" />
+        <span>Board settings</span>
       </button>
     </div>
   );

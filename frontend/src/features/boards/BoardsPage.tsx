@@ -9,6 +9,7 @@ import { Avatar } from '../../components/Avatar';
 import { CreateBoardDialog } from './CreateBoardDialog';
 import { JoinBoardDialog } from './JoinBoardDialog';
 import { BoardContextMenu } from './BoardContextMenu';
+import { BoardSettingsDialog } from '../board/BoardSettingsDialog';
 import { strings } from '../../strings';
 import type { BoardSummary } from '../../api/types';
 
@@ -19,6 +20,7 @@ export const BoardsPage: React.FC = () => {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
+  const [settingsBoard, setSettingsBoard] = useState<BoardSummary | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     board: BoardSummary;
     x: number;
@@ -69,13 +71,8 @@ export const BoardsPage: React.FC = () => {
     }
   };
 
-  const handleLeave = (board: BoardSummary) => {
-    if (board.role === 'OWNER') {
-      setNotification(`You are the owner of "${board.name}". Manage settings inside the board.`);
-    } else {
-      setNotification(`To leave "${board.name}", request removal from the board owner.`);
-    }
-    setTimeout(() => setNotification(null), 4000);
+  const handleOpenSettings = (board: BoardSummary) => {
+    setSettingsBoard(board);
   };
 
   return (
@@ -221,7 +218,25 @@ export const BoardsPage: React.FC = () => {
           onOpen={(b) => navigate(`/boards/${b.id}`)}
           onCopyInvite={handleCopyInvite}
           onCopyLink={handleCopyLink}
-          onLeave={handleLeave}
+          onOpenSettings={handleOpenSettings}
+        />
+      )}
+
+      {settingsBoard && (
+        <BoardSettingsDialog
+          isOpen={Boolean(settingsBoard)}
+          onClose={() => setSettingsBoard(null)}
+          board={settingsBoard}
+          onBoardDeleted={() => {
+            queryClient.invalidateQueries({ queryKey: ['boards'] });
+            setNotification(`Board "${settingsBoard.name}" was deleted`);
+            setTimeout(() => setNotification(null), 3000);
+          }}
+          onBoardLeft={() => {
+            queryClient.invalidateQueries({ queryKey: ['boards'] });
+            setNotification(`You left "${settingsBoard.name}"`);
+            setTimeout(() => setNotification(null), 3000);
+          }}
         />
       )}
     </div>

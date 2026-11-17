@@ -136,6 +136,16 @@ export const boardsApi = {
 
   get: (boardId: number): Promise<BoardDetail> =>
     request<BoardDetail>(`/api/boards/${boardId}`),
+
+  delete: (boardId: number): Promise<void> =>
+    request<void>(`/api/boards/${boardId}`, {
+      method: 'DELETE',
+    }),
+
+  leave: (boardId: number): Promise<void> =>
+    request<void>(`/api/boards/${boardId}/leave`, {
+      method: 'POST',
+    }),
 };
 
 export const tasksApi = {

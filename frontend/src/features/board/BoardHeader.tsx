@@ -1,4 +1,5 @@
 import React from 'react';
+import { Settings } from 'lucide-react';
 import type { BoardDetail } from '../../api/types';
 import type { SocketConnectionState } from '../../api/socket';
 import { Button } from '../../components/Button';
@@ -12,6 +13,7 @@ export interface BoardHeaderProps {
   socketStatus: SocketConnectionState;
   onNavigateBoards: () => void;
   onCopyInviteCode: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const BoardHeader: React.FC<BoardHeaderProps> = ({
@@ -20,6 +22,7 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
   socketStatus,
   onNavigateBoards,
   onCopyInviteCode,
+  onOpenSettings,
 }) => {
   return (
     <header className="h-12 bg-surface-raised border-b border-rule px-4 flex items-center justify-between flex-shrink-0 z-10">
@@ -54,6 +57,18 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
         )}
 
         <ConnectionIndicator status={socketStatus} />
+
+        {board && onOpenSettings && (
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            aria-label="Board settings"
+            title="Board settings"
+            className="p-1.5 rounded-sm text-ink-muted hover:text-ink hover:bg-surface-canvas transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <Settings size={16} strokeWidth={1.5} />
+          </button>
+        )}
       </div>
     </header>
   );

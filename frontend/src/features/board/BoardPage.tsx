@@ -13,6 +13,7 @@ import { SprintProgressBar } from './SprintProgressBar';
 import { TaskCardView } from './TaskCardView';
 import { TaskDrawer } from '../task/TaskDrawer';
 import { CreateTaskDialog } from '../task/CreateTaskDialog';
+import { BoardSettingsDialog } from './BoardSettingsDialog';
 import { useBoardDnd } from './useBoardDnd';
 import { useBoardSocket } from '../realtime/useBoardSocket';
 import { useBoardConflictState } from './useBoardConflictState';
@@ -29,6 +30,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
 
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [createColumnId, setCreateColumnId] = useState<number>(1);
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -79,6 +81,12 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
     return board.columns.flatMap((c) => c.tasks).find((t) => t.id === selectedTaskId) ?? null;
   }, [board, selectedTaskId]);
 
+  const currentUserRole = useMemo(() => {
+    if (!board || !currentUser) return 'MEMBER';
+    const member = board.members.find((m) => m.id === currentUser.id);
+    return member?.role ?? 'MEMBER';
+  }, [board, currentUser]);
+
   const handleCopyInviteCode = async () => {
     if (!board) return;
     try {
@@ -100,7 +108,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
           target instanceof HTMLSelectElement ||
           target?.isContentEditable;
 
-        if (!isEditing && selectedTaskId === null && !isCreateOpen) {
+        if (!isEditing && selectedTaskId === null && !isCreateOpen && !isSettingsOpen) {
           e.preventDefault();
           navigate('/boards');
         }
@@ -108,7 +116,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate, selectedTaskId, isCreateOpen]);
+  }, [navigate, selectedTaskId, isCreateOpen, isSettingsOpen]);
 
   return (
     <div className="min-h-screen bg-surface-canvas flex flex-col text-ink">
@@ -118,6 +126,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
         socketStatus={socketStatus}
         onNavigateBoards={() => navigate('/boards')}
         onCopyInviteCode={handleCopyInviteCode}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {board && board.columns && (
@@ -206,6 +215,21 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
           members={board.members}
           onClose={() => setIsCreateOpen(false)}
           onCreate={handleCreateTask}
+        />
+      )}
+
+      {board && (
+        <BoardSettingsDialog
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          board={{
+            id: board.id,
+            name: board.name,
+            inviteCode: board.inviteCode,
+            role: currentUserRole,
+          }}
+          onBoardDeleted={() => navigate('/boards')}
+          onBoardLeft={() => navigate('/boards')}
         />
       )}
     </div>
