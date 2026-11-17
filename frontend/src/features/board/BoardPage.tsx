@@ -143,7 +143,12 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
         </div>
       )}
 
-      <main className="flex-1 flex overflow-hidden relative">
+      <main
+        className={`flex-1 flex overflow-hidden relative ${
+          isSettingsOpen || isCreateOpen ? 'pointer-events-none select-none' : ''
+        }`}
+        aria-hidden={isSettingsOpen || isCreateOpen}
+      >
         {isLoading ? (
           <BoardSkeleton />
         ) : isError || !board ? (

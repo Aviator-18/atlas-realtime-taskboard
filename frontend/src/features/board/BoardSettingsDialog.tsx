@@ -83,14 +83,34 @@ export const BoardSettingsDialog: React.FC<BoardSettingsDialogProps> = ({
     }
   };
 
-  const handleCloseDialog = () => {
+  const handleCloseDialog = React.useCallback(() => {
     if (!isSubmitting) {
       setIsConfirmingDelete(false);
       setIsConfirmingLeave(false);
       setErrorMessage(null);
       onClose();
     }
-  };
+  }, [isSubmitting, onClose]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isConfirmingDelete || isConfirmingLeave) {
+          setIsConfirmingDelete(false);
+          setIsConfirmingLeave(false);
+        } else {
+          handleCloseDialog();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, isConfirmingDelete, isConfirmingLeave, handleCloseDialog]);
 
   return (
     <Dialog isOpen={isOpen} onClose={handleCloseDialog} title="Board settings">
