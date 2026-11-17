@@ -8,6 +8,7 @@ import { Banner } from '../../components/Banner';
 import { Avatar } from '../../components/Avatar';
 import { CreateBoardDialog } from './CreateBoardDialog';
 import { JoinBoardDialog } from './JoinBoardDialog';
+import { BoardContextMenu } from './BoardContextMenu';
 import { strings } from '../../strings';
 import type { BoardSummary } from '../../api/types';
 
@@ -18,6 +19,12 @@ export const BoardsPage: React.FC = () => {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    board: BoardSummary;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
 
   const {
     data: boards,
@@ -32,6 +39,43 @@ export const BoardsPage: React.FC = () => {
   const handleBoardJoinedOrCreated = (board: BoardSummary) => {
     queryClient.invalidateQueries({ queryKey: ['boards'] });
     navigate(`/boards/${board.id}`);
+  };
+
+  const handleCopyInvite = async (code?: string) => {
+    if (!code) {
+      setNotification('Invite code is available inside the board');
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(code);
+      setNotification(`Invite code ${code} copied to clipboard`);
+      setTimeout(() => setNotification(null), 3000);
+    } catch {
+      setNotification('Unable to copy to clipboard');
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
+  const handleCopyLink = async (boardId: number) => {
+    try {
+      const url = `${window.location.origin}/boards/${boardId}`;
+      await navigator.clipboard.writeText(url);
+      setNotification('Board link copied to clipboard');
+      setTimeout(() => setNotification(null), 3000);
+    } catch {
+      setNotification('Unable to copy to clipboard');
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
+  const handleLeave = (board: BoardSummary) => {
+    if (board.role === 'OWNER') {
+      setNotification(`You are the owner of "${board.name}". Manage settings inside the board.`);
+    } else {
+      setNotification(`To leave "${board.name}", request removal from the board owner.`);
+    }
+    setTimeout(() => setNotification(null), 4000);
   };
 
   return (
@@ -62,6 +106,15 @@ export const BoardsPage: React.FC = () => {
             variant="error"
             onRetry={() => refetch()}
             className="mb-6"
+          />
+        )}
+
+        {notification && (
+          <Banner
+            message={notification}
+            variant="info"
+            onDismiss={() => setNotification(null)}
+            className="mb-4"
           />
         )}
 
@@ -107,6 +160,14 @@ export const BoardsPage: React.FC = () => {
                 <div
                   key={board.id}
                   onClick={() => navigate(`/boards/${board.id}`)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenu({
+                      board,
+                      x: e.clientX,
+                      y: e.clientY,
+                    });
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
@@ -115,6 +176,7 @@ export const BoardsPage: React.FC = () => {
                   }}
                   tabIndex={0}
                   role="button"
+                  title="Click to open, right-click for options"
                   className="p-4 flex items-center justify-between hover:bg-surface-canvas/50 transition-colors duration-fast cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <div className="flex flex-col gap-0.5">
@@ -148,6 +210,19 @@ export const BoardsPage: React.FC = () => {
         onClose={() => setIsJoinOpen(false)}
         onSuccess={handleBoardJoinedOrCreated}
       />
+
+      {contextMenu && (
+        <BoardContextMenu
+          board={contextMenu.board}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          onOpen={(b) => navigate(`/boards/${b.id}`)}
+          onCopyInvite={handleCopyInvite}
+          onCopyLink={handleCopyLink}
+          onLeave={handleLeave}
+        />
+      )}
     </div>
   );
 };

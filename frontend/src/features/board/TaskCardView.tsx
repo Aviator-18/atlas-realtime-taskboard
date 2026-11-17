@@ -68,7 +68,7 @@ export const TaskCardView: React.FC<TaskCardViewProps> = ({
             ? '0 6px 16px rgba(31, 37, 44, 0.18)'
             : undefined,
         }}
-        className={`border rounded-md p-[10px_12px] cursor-pointer transition-colors duration-fast text-left select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+        className={`border rounded-md p-[10px_12px] cursor-pointer transition-all duration-150 ease-out hover:-translate-y-[1px] hover:shadow-sm text-left select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
           cue ? 'live-cue-card' : 'bg-surface-raised'
         } ${
           isOverlay

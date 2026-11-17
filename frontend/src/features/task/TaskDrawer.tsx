@@ -54,32 +54,53 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
     onClearConflict,
   });
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   if (!task) return null;
 
   return (
-    <aside aria-label="Task details" className="fixed top-12 right-0 h-[calc(100vh-48px)] w-full md:w-[420px] bg-surface-raised border-l border-rule shadow-floating z-30 flex flex-col transition-transform duration-drawer ease-out">
-      <div className="p-4 border-b border-rule flex items-center justify-between gap-3 flex-shrink-0">
-        <div className="flex-1">
-          <label htmlFor="drawer-task-title" className="sr-only">{strings.task.titleLabel}</label>
-          <input
-            id="drawer-task-title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            maxLength={120}
-            className="w-full text-[18px] leading-[26px] font-semibold text-ink bg-surface-raised border border-rule-strong hover:border-ink-muted rounded-sm px-2.5 h-8 transition-colors duration-fast outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          />
+    <>
+      <div
+        className="fixed inset-0 top-12 bg-black/10 backdrop-blur-[2px] z-20 transition-opacity duration-fast"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <aside aria-label="Task details" className="fixed top-12 right-0 h-[calc(100vh-48px)] w-full md:w-[420px] bg-surface-raised border-l border-rule shadow-floating z-30 flex flex-col transition-transform duration-drawer ease-out">
+        <div className="p-4 border-b border-rule flex items-center justify-between gap-3 flex-shrink-0">
+          <div className="flex-1">
+            <label htmlFor="drawer-task-title" className="sr-only">{strings.task.titleLabel}</label>
+            <input
+              id="drawer-task-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              maxLength={120}
+              className="w-full text-[18px] leading-[26px] font-semibold text-ink bg-surface-raised border border-rule-strong hover:border-ink-muted rounded-sm px-2.5 h-8 transition-colors duration-fast outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <kbd className="hidden sm:inline-block text-[10px] leading-3 font-mono text-ink-muted border border-rule px-1.5 py-0.5 rounded bg-surface-lane select-none">
+              Esc
+            </kbd>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={strings.task.closeDrawer}
+              className="p-1 rounded-sm text-ink-muted hover:text-ink hover:bg-surface-canvas transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0"
+            >
+              <X size={16} strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={strings.task.closeDrawer}
-          className="p-1 rounded-sm text-ink-muted hover:text-ink hover:bg-surface-canvas transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent flex-shrink-0"
-        >
-          <X size={16} strokeWidth={1.5} />
-        </button>
-      </div>
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
         {conflictBanner && (
@@ -161,5 +182,6 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({
         </div>
       </div>
     </aside>
+    </>
   );
 };

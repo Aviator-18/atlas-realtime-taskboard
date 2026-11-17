@@ -78,14 +78,24 @@ export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
           strategy={verticalListSortingStrategy}
         >
           {column.tasks.length === 0 ? (
-            <div className="py-6 text-center text-[12.5px] leading-[18px] text-ink-muted select-none relative">
+            <div className="py-8 px-3 text-center text-[12.5px] leading-[18px] text-ink-muted select-none relative border border-dashed border-rule/80 rounded-md bg-surface-canvas/20 flex flex-col items-center justify-center gap-1.5 transition-colors duration-fast">
               {isOver && (
                 <div
                   data-testid="empty-column-drop-indicator"
-                  className="h-[2px] bg-accent rounded-full mb-3 w-full"
+                  className="h-[2px] bg-accent rounded-full mb-2 w-full"
                 />
               )}
-              {strings.boardView.noTasks}
+              <svg
+                className="w-7 h-7 text-ink-muted/50 stroke-current"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.2}
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="font-medium text-ink-muted">{strings.boardView.noTasks}</span>
+              <span className="text-[11px] text-ink-muted/70">Drag tasks here</span>
             </div>
           ) : (
             column.tasks.map((task, index) => {

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { Banner } from '../../components/Banner';
 import { strings } from '../../strings';
@@ -97,16 +98,25 @@ export const EstimationSuggestionBlock: React.FC<EstimationSuggestionBlockProps>
             onClick={handleSuggest}
             disabled={!title.trim() || isLoading}
           >
-            {isLoading ? strings.estimation.suggesting : strings.estimation.suggestEstimate}
+            <span className="flex items-center gap-1.5">
+              <Sparkles size={13} className="text-accent" />
+              <span>{isLoading ? strings.estimation.suggesting : strings.estimation.suggestEstimate}</span>
+            </span>
           </Button>
         </div>
       ) : (
         <div
           data-testid="estimation-suggestion-result"
-          className="border border-rule rounded-sm p-3 bg-surface-raised flex flex-col gap-2"
+          className="border border-rule border-l-2 border-l-accent rounded-sm p-3 bg-surface-raised flex flex-col gap-2 transition-all duration-200 animate-in fade-in slide-in-from-top-1"
         >
-          <div className="text-[13px] font-medium text-ink">
-            {strings.estimation.summaryLine(suggestion.estimateHours, getPriorityLabel(suggestion.priority))}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[13px] font-semibold text-ink">
+              {strings.estimation.summaryLine(suggestion.estimateHours, getPriorityLabel(suggestion.priority))}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+              <Sparkles size={11} />
+              {suggestion.source === 'LLM' ? 'Google Gemini' : 'Heuristic model'}
+            </span>
           </div>
 
           <div className="text-[12.5px] text-ink-muted">

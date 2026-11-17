@@ -9,6 +9,7 @@ import { Banner } from '../../components/Banner';
 import { BoardColumnView } from './BoardColumnView';
 import { BoardSkeleton } from './BoardSkeleton';
 import { BoardHeader } from './BoardHeader';
+import { SprintProgressBar } from './SprintProgressBar';
 import { TaskCardView } from './TaskCardView';
 import { TaskDrawer } from '../task/TaskDrawer';
 import { CreateTaskDialog } from '../task/CreateTaskDialog';
@@ -98,6 +99,10 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
         onNavigateBoards={() => navigate('/boards')}
         onCopyInviteCode={handleCopyInviteCode}
       />
+
+      {board && board.columns && (
+        <SprintProgressBar columns={board.columns} />
+      )}
 
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only" data-testid="live-cue-announcements">
         {liveAnnouncement}
