@@ -69,4 +69,20 @@ public class BoardController {
         Long userId = Long.valueOf(jwt.getSubject());
         boardService.leaveBoard(boardId, userId);
     }
+
+    @PostMapping("/{boardId}/regenerate-invite")
+    public RegenerateInviteResponse regenerateInviteCode(@AuthenticationPrincipal Jwt jwt,
+                                                         @PathVariable("boardId") Long boardId) {
+        Long userId = Long.valueOf(jwt.getSubject());
+        return boardService.regenerateInviteCode(boardId, userId);
+    }
+
+    @DeleteMapping("/{boardId}/members/{memberId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeMember(@AuthenticationPrincipal Jwt jwt,
+                             @PathVariable("boardId") Long boardId,
+                             @PathVariable("memberId") Long memberId) {
+        Long userId = Long.valueOf(jwt.getSubject());
+        boardService.removeMember(boardId, memberId, userId);
+    }
 }

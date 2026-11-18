@@ -10,6 +10,7 @@ import type {
   JoinBoardRequest,
   LoginRequest,
   ProblemDetails,
+  RegenerateInviteResponse,
   RegisterRequest,
   Task,
   UpdateTaskRequest,
@@ -145,6 +146,16 @@ export const boardsApi = {
   leave: (boardId: number): Promise<void> =>
     request<void>(`/api/boards/${boardId}/leave`, {
       method: 'POST',
+    }),
+
+  regenerateInviteCode: (boardId: number): Promise<RegenerateInviteResponse> =>
+    request<RegenerateInviteResponse>(`/api/boards/${boardId}/regenerate-invite`, {
+      method: 'POST',
+    }),
+
+  removeMember: (boardId: number, memberId: number): Promise<void> =>
+    request<void>(`/api/boards/${boardId}/members/${memberId}`, {
+      method: 'DELETE',
     }),
 };
 

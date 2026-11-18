@@ -14,6 +14,7 @@ import com.atlas.board.web.BoardDetailResponse;
 import com.atlas.board.web.BoardSummaryResponse;
 import com.atlas.board.web.ColumnDetailResponse;
 import com.atlas.board.web.MemberResponse;
+import com.atlas.board.web.RegenerateInviteResponse;
 import com.atlas.common.NotAMemberException;
 import com.atlas.realtime.MemberJoinedDomainEvent;
 import com.atlas.task.persistence.TaskEntity;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -68,8 +70,9 @@ public class BoardService {
         Instant now = clock.instant();
 
         String inviteCode = generateUniqueInviteCode();
+        Instant inviteCodeExpiresAt = now.plus(Duration.ofDays(7));
 
-        BoardEntity board = new BoardEntity(name.trim(), inviteCode, ownerUserId, now);
+        BoardEntity board = new BoardEntity(name.trim(), inviteCode, ownerUserId, now, inviteCodeExpiresAt);
         board = boardRepository.save(board);
 
         BoardMemberEntity ownerMember = new BoardMemberEntity(board.getId(), ownerUserId, Role.OWNER, now);
@@ -87,6 +90,10 @@ public class BoardService {
     public BoardSummaryResponse joinBoard(String inviteCode, Long userId) {
         BoardEntity board = boardRepository.findByInviteCode(inviteCode.trim())
                 .orElseThrow(() -> new InvalidInviteCodeException("Invalid invite code: " + inviteCode));
+
+        if (board.getInviteCodeExpiresAt() != null && board.getInviteCodeExpiresAt().isBefore(clock.instant())) {
+            throw new InvalidInviteCodeException("Invite code has expired. Ask the board owner for a new invite code.");
+        }
 
         long memberCount = boardMemberRepository.countByIdBoardId(board.getId());
         Optional<BoardMemberEntity> existingMembership = boardMemberRepository.findById(
@@ -143,13 +150,22 @@ public class BoardService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public BoardDetailResponse getBoardDetail(Long boardId, Long userId) {
         BoardEntity board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new BoardNotFoundException("Board not found: " + boardId));
 
         if (!boardMemberRepository.existsByIdBoardIdAndIdUserId(boardId, userId)) {
             throw new NotAMemberException("User is not a member of board: " + boardId);
+        }
+
+        // Auto-rotation: if owner views the board and the invite code has expired, automatically rotate it
+        Instant now = clock.instant();
+        if (board.getOwnerId().equals(userId) && board.getInviteCodeExpiresAt() != null && board.getInviteCodeExpiresAt().isBefore(now)) {
+            String newCode = generateUniqueInviteCode();
+            board.setInviteCode(newCode);
+            board.setInviteCodeExpiresAt(now.plus(Duration.ofDays(7)));
+            board = boardRepository.save(board);
         }
 
         List<BoardMemberEntity> memberEntities = boardMemberRepository.findByIdBoardId(boardId);
@@ -186,7 +202,54 @@ public class BoardService {
                 ))
                 .toList();
 
-        return new BoardDetailResponse(board.getId(), board.getName(), board.getInviteCode(), members, columns);
+        return new BoardDetailResponse(board.getId(), board.getName(), board.getInviteCode(), board.getInviteCodeExpiresAt(), members, columns);
+    }
+
+    @Transactional
+    public RegenerateInviteResponse regenerateInviteCode(Long boardId, Long callerUserId) {
+        BoardEntity board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new BoardNotFoundException("Board not found: " + boardId));
+
+        if (!board.getOwnerId().equals(callerUserId)) {
+            throw new AccessDeniedException("Only the board owner can regenerate the invite code");
+        }
+
+        Instant now = clock.instant();
+        String newCode = generateUniqueInviteCode();
+        board.setInviteCode(newCode);
+        board.setInviteCodeExpiresAt(now.plus(Duration.ofDays(7)));
+        boardRepository.save(board);
+
+        return new RegenerateInviteResponse(newCode, board.getInviteCodeExpiresAt());
+    }
+
+    @Transactional
+    public void removeMember(Long boardId, Long targetUserId, Long callerUserId) {
+        BoardEntity board = boardRepository.findById(boardId)
+                .orElseThrow(() -> new BoardNotFoundException("Board not found: " + boardId));
+
+        if (!board.getOwnerId().equals(callerUserId)) {
+            throw new AccessDeniedException("Only the board owner can remove members");
+        }
+
+        if (board.getOwnerId().equals(targetUserId)) {
+            throw new IllegalArgumentException("Board owner cannot be removed from the board");
+        }
+
+        com.atlas.board.persistence.BoardMemberId memberId = new com.atlas.board.persistence.BoardMemberId(boardId, targetUserId);
+        if (!boardMemberRepository.existsById(memberId)) {
+            throw new NotAMemberException("User is not a member of board: " + boardId);
+        }
+
+        List<TaskEntity> assignedTasks = taskRepository.findByBoardId(boardId).stream()
+                .filter(t -> targetUserId.equals(t.getAssigneeId()))
+                .toList();
+        for (TaskEntity task : assignedTasks) {
+            task.setAssigneeId(null);
+        }
+        taskRepository.saveAll(assignedTasks);
+
+        boardMemberRepository.deleteById(memberId);
     }
 
     @Transactional

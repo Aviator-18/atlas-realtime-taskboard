@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { boardsApi } from '../../api/client';
 import { useRouter } from '../../router/routerContext';
 import { useAuth } from '../auth/authContextDef';
@@ -21,6 +21,7 @@ import { useBoardSocket } from '../realtime/useBoardSocket';
 import { useBoardConflictState } from './useBoardConflictState';
 import { useBoardTaskMutations } from './useBoardTaskMutations';
 import { strings } from '../../strings';
+import type { BoardDetail } from '../../api/types';
 
 export interface BoardPageProps {
   boardId: number;
@@ -29,6 +30,7 @@ export interface BoardPageProps {
 export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
   const { navigate } = useRouter();
   const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
 
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -331,10 +333,37 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
             id: board.id,
             name: board.name,
             inviteCode: board.inviteCode,
+            inviteCodeExpiresAt: board.inviteCodeExpiresAt,
             role: currentUserRole,
           }}
+          members={board.members}
           onBoardDeleted={() => navigate('/boards')}
           onBoardLeft={() => navigate('/boards')}
+          onMemberRemoved={(removedId) => {
+            queryClient.setQueryData<BoardDetail>(['board', boardId], (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                members: old.members.filter((m) => m.id !== removedId),
+                columns: old.columns.map((c) => ({
+                  ...c,
+                  tasks: c.tasks.map((t) =>
+                    t.assigneeId === removedId ? { ...t, assigneeId: null } : t,
+                  ),
+                })),
+              };
+            });
+          }}
+          onInviteRegenerated={(newCode, expiresAt) => {
+            queryClient.setQueryData<BoardDetail>(['board', boardId], (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                inviteCode: newCode,
+                inviteCodeExpiresAt: expiresAt,
+              };
+            });
+          }}
         />
       )}
 

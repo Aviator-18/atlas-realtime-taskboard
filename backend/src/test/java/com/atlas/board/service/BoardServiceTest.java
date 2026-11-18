@@ -13,6 +13,7 @@ import com.atlas.board.persistence.ColumnKind;
 import com.atlas.board.persistence.Role;
 import com.atlas.board.web.BoardDetailResponse;
 import com.atlas.board.web.BoardSummaryResponse;
+import com.atlas.board.web.RegenerateInviteResponse;
 import com.atlas.common.NotAMemberException;
 import com.atlas.task.persistence.Priority;
 import com.atlas.task.persistence.TaskEntity;
@@ -22,8 +23,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -163,5 +166,96 @@ class BoardServiceTest {
 
         assertThatThrownBy(() -> boardService.getBoardDetail(10L, 99L))
                 .isInstanceOf(NotAMemberException.class);
+    }
+
+    @Test
+    void removes_member_and_unassigns_tasks_when_called_by_owner() throws Exception {
+        BoardEntity board = new BoardEntity("Sprint 12", "K7M2QX9R", 1L, fixedNow, fixedNow.plus(Duration.ofDays(7)));
+        setBoardId(board, 10L);
+
+        when(boardRepository.findById(10L)).thenReturn(Optional.of(board));
+        when(boardMemberRepository.existsById(new BoardMemberId(10L, 2L))).thenReturn(true);
+
+        TaskEntity assignedTask = new TaskEntity(10L, 100L, "Fix bug", "", 1024, 2L, null, Priority.MEDIUM, null, 1L, fixedNow, fixedNow, null, null);
+        when(taskRepository.findByBoardId(10L)).thenReturn(List.of(assignedTask));
+
+        boardService.removeMember(10L, 2L, 1L);
+
+        assertThat(assignedTask.getAssigneeId()).isNull();
+        verify(taskRepository).saveAll(List.of(assignedTask));
+        verify(boardMemberRepository).deleteById(new BoardMemberId(10L, 2L));
+    }
+
+    @Test
+    void rejects_removing_member_when_caller_is_not_owner() throws Exception {
+        BoardEntity board = new BoardEntity("Sprint 12", "K7M2QX9R", 1L, fixedNow, fixedNow.plus(Duration.ofDays(7)));
+        setBoardId(board, 10L);
+
+        when(boardRepository.findById(10L)).thenReturn(Optional.of(board));
+
+        assertThatThrownBy(() -> boardService.removeMember(10L, 3L, 2L))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void rejects_removing_owner_from_board() throws Exception {
+        BoardEntity board = new BoardEntity("Sprint 12", "K7M2QX9R", 1L, fixedNow, fixedNow.plus(Duration.ofDays(7)));
+        setBoardId(board, 10L);
+
+        when(boardRepository.findById(10L)).thenReturn(Optional.of(board));
+
+        assertThatThrownBy(() -> boardService.removeMember(10L, 1L, 1L))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void regenerates_invite_code_and_resets_expiry_by_seven_days() throws Exception {
+        BoardEntity board = new BoardEntity("Sprint 12", "OLDCODE1", 1L, fixedNow, fixedNow.minus(Duration.ofDays(1)));
+        setBoardId(board, 10L);
+
+        when(boardRepository.findById(10L)).thenReturn(Optional.of(board));
+        when(inviteCodeGenerator.generate()).thenReturn("NEWCODE2");
+        when(boardRepository.existsByInviteCode("NEWCODE2")).thenReturn(false);
+
+        RegenerateInviteResponse response = boardService.regenerateInviteCode(10L, 1L);
+
+        assertThat(response.inviteCode()).isEqualTo("NEWCODE2");
+        assertThat(response.inviteCodeExpiresAt()).isEqualTo(fixedNow.plus(Duration.ofDays(7)));
+        assertThat(board.getInviteCode()).isEqualTo("NEWCODE2");
+        verify(boardRepository).save(board);
+    }
+
+    @Test
+    void rejects_join_board_when_invite_code_is_expired() {
+        BoardEntity board = new BoardEntity("Sprint 12", "EXPIRED1", 1L, fixedNow.minus(Duration.ofDays(10)), fixedNow.minus(Duration.ofDays(3)));
+
+        when(boardRepository.findByInviteCode("EXPIRED1")).thenReturn(Optional.of(board));
+
+        assertThatThrownBy(() -> boardService.joinBoard("EXPIRED1", 5L))
+                .isInstanceOf(InvalidInviteCodeException.class)
+                .hasMessageContaining("expired");
+    }
+
+    @Test
+    void auto_rotates_expired_invite_code_when_owner_views_board() throws Exception {
+        BoardEntity board = new BoardEntity("Sprint 12", "OLDEXPR1", 1L, fixedNow.minus(Duration.ofDays(10)), fixedNow.minus(Duration.ofDays(1)));
+        setBoardId(board, 10L);
+
+        when(boardRepository.findById(10L)).thenReturn(Optional.of(board));
+        when(boardMemberRepository.existsByIdBoardIdAndIdUserId(10L, 1L)).thenReturn(true);
+        when(inviteCodeGenerator.generate()).thenReturn("AUTOROT1");
+        when(boardRepository.existsByInviteCode("AUTOROT1")).thenReturn(false);
+        when(boardRepository.save(any(BoardEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        BoardDetailResponse detail = boardService.getBoardDetail(10L, 1L);
+
+        assertThat(detail.inviteCode()).isEqualTo("AUTOROT1");
+        assertThat(detail.inviteCodeExpiresAt()).isEqualTo(fixedNow.plus(Duration.ofDays(7)));
+    }
+
+    private void setBoardId(BoardEntity board, Long id) throws Exception {
+        var idField = BoardEntity.class.getDeclaredField("id");
+        idField.setAccessible(true);
+        idField.set(board, id);
     }
 }

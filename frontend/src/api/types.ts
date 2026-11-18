@@ -57,8 +57,14 @@ export interface BoardDetail {
   id: number;
   name: string;
   inviteCode: string;
+  inviteCodeExpiresAt?: string;
   members: Member[];
   columns: BoardColumn[];
+}
+
+export interface RegenerateInviteResponse {
+  inviteCode: string;
+  inviteCodeExpiresAt: string;
 }
 
 export interface RegisterRequest {

@@ -33,15 +33,23 @@ public class BoardEntity {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "invite_code_expires_at", nullable = false)
+    private Instant inviteCodeExpiresAt;
+
     protected BoardEntity() {
         // JPA constructor
     }
 
-    public BoardEntity(String name, String inviteCode, Long ownerId, Instant createdAt) {
+    public BoardEntity(String name, String inviteCode, Long ownerId, Instant createdAt, Instant inviteCodeExpiresAt) {
         this.name = name;
         this.inviteCode = inviteCode;
         this.ownerId = ownerId;
         this.createdAt = createdAt;
+        this.inviteCodeExpiresAt = inviteCodeExpiresAt;
+    }
+
+    public BoardEntity(String name, String inviteCode, Long ownerId, Instant createdAt) {
+        this(name, inviteCode, ownerId, createdAt, createdAt != null ? createdAt.plus(java.time.Duration.ofDays(7)) : null);
     }
 
     public Long getId() {
@@ -78,6 +86,14 @@ public class BoardEntity {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Instant getInviteCodeExpiresAt() {
+        return inviteCodeExpiresAt;
+    }
+
+    public void setInviteCodeExpiresAt(Instant inviteCodeExpiresAt) {
+        this.inviteCodeExpiresAt = inviteCodeExpiresAt;
     }
 
     @Override
