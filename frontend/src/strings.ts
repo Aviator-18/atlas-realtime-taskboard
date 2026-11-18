@@ -44,6 +44,17 @@ export const strings = {
     noTasks: 'No tasks',
     backToBoards: 'Boards',
   },
+  filter: {
+    searchPlaceholder: 'Search tasks... (Press / to focus)',
+    allPriority: 'All priorities',
+    allAssignees: 'All assignees',
+    assignedToMe: 'Assigned to me',
+    unassigned: 'Unassigned',
+    showingCount: (matching: number, total: number) => `Showing ${matching} of ${total} tasks`,
+    clearFilters: 'Clear filters',
+    noMatchingTasks: 'No tasks match active filters',
+    clearToSeeAll: 'Clear filters to see all tasks',
+  },
   task: {
     createTask: 'Create task',
     saveChanges: 'Save changes',

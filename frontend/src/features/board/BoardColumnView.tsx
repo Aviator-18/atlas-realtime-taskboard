@@ -20,6 +20,8 @@ export interface BoardColumnViewProps {
   cuesByTaskId?: Record<number, TaskCue>;
   conflictsByTaskId?: Record<number, TaskConflict>;
   deletedTaskBanners?: Array<{ id: number; columnId: number; message: string }>;
+  isFiltered?: boolean;
+  onClearFilters?: () => void;
 }
 
 export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
@@ -34,6 +36,8 @@ export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
   cuesByTaskId,
   conflictsByTaskId,
   deletedTaskBanners = [],
+  isFiltered = false,
+  onClearFilters,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `col-${column.id}`,
@@ -78,25 +82,44 @@ export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
           strategy={verticalListSortingStrategy}
         >
           {column.tasks.length === 0 ? (
-            <div className="py-8 px-3 text-center text-[12.5px] leading-[18px] text-ink-muted select-none relative border border-dashed border-rule/80 rounded-md bg-surface-canvas/20 flex flex-col items-center justify-center gap-1.5 transition-colors duration-fast">
-              {isOver && (
-                <div
-                  data-testid="empty-column-drop-indicator"
-                  className="h-[2px] bg-accent rounded-full mb-2 w-full"
-                />
-              )}
-              <svg
-                className="w-7 h-7 text-ink-muted/50 stroke-current"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.2}
-                aria-hidden="true"
+            isFiltered ? (
+              <div
+                data-testid={`column-filtered-empty-${column.id}`}
+                className="py-6 px-3 text-center text-[12.5px] leading-[18px] text-ink-muted select-none border border-dashed border-rule/80 rounded-md bg-surface-canvas/20 flex flex-col items-center justify-center gap-1.5 transition-colors duration-fast"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span className="font-medium text-ink-muted">{strings.boardView.noTasks}</span>
-              <span className="text-[11px] text-ink-muted/70">Drag tasks here</span>
-            </div>
+                <span className="font-medium text-ink-muted">{strings.filter.noMatchingTasks}</span>
+                {onClearFilters && (
+                  <button
+                    type="button"
+                    onClick={onClearFilters}
+                    data-testid={`column-clear-filters-${column.id}`}
+                    className="text-[11.5px] text-accent hover:underline font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-sm"
+                  >
+                    {strings.filter.clearFilters}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="py-8 px-3 text-center text-[12.5px] leading-[18px] text-ink-muted select-none relative border border-dashed border-rule/80 rounded-md bg-surface-canvas/20 flex flex-col items-center justify-center gap-1.5 transition-colors duration-fast">
+                {isOver && (
+                  <div
+                    data-testid="empty-column-drop-indicator"
+                    className="h-[2px] bg-accent rounded-full mb-2 w-full"
+                  />
+                )}
+                <svg
+                  className="w-7 h-7 text-ink-muted/50 stroke-current"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.2}
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="font-medium text-ink-muted">{strings.boardView.noTasks}</span>
+                <span className="text-[11px] text-ink-muted/70">Drag tasks here</span>
+              </div>
+            )
           ) : (
             column.tasks.map((task, index) => {
               const isOverCard = overDropId === `task-${task.id}`;

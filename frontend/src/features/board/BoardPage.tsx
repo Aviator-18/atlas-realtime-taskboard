@@ -10,6 +10,7 @@ import { BoardColumnView } from './BoardColumnView';
 import { BoardSkeleton } from './BoardSkeleton';
 import { BoardHeader } from './BoardHeader';
 import { SprintProgressBar } from './SprintProgressBar';
+import { BoardFilterBar } from './BoardFilterBar';
 import { TaskCardView } from './TaskCardView';
 import { TaskDrawer } from '../task/TaskDrawer';
 import { CreateTaskDialog } from '../task/CreateTaskDialog';
@@ -34,6 +35,10 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
   const [createColumnId, setCreateColumnId] = useState<number>(1);
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPriority, setSelectedPriority] = useState<'ALL' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL');
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<number | 'ALL' | 'UNASSIGNED'>('ALL');
 
   const { data: board, isLoading, isError, refetch } = useQuery({
     queryKey: ['board', boardId],
@@ -87,6 +92,76 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
     return member?.role ?? 'MEMBER';
   }, [board, currentUser]);
 
+  const isFiltered = useMemo(() => {
+    return (
+      searchQuery.trim().length > 0 ||
+      selectedPriority !== 'ALL' ||
+      selectedAssigneeId !== 'ALL'
+    );
+  }, [searchQuery, selectedPriority, selectedAssigneeId]);
+
+  const { totalTasks, matchingTasks, displayColumns } = useMemo(() => {
+    if (!board) {
+      return { totalTasks: 0, matchingTasks: 0, displayColumns: [] };
+    }
+
+    const allTasks = board.columns.flatMap((c) => c.tasks);
+    const total = allTasks.length;
+
+    if (!isFiltered) {
+      return {
+        totalTasks: total,
+        matchingTasks: total,
+        displayColumns: board.columns,
+      };
+    }
+
+    const query = searchQuery.trim().toLowerCase();
+
+    let matchCount = 0;
+    const filteredCols = board.columns.map((column) => {
+      const tasks = column.tasks.filter((task) => {
+        if (query) {
+          const titleMatch = task.title.toLowerCase().includes(query);
+          const descMatch = task.description
+            ? task.description.toLowerCase().includes(query)
+            : false;
+          if (!titleMatch && !descMatch) return false;
+        }
+
+        if (selectedPriority !== 'ALL' && task.priority !== selectedPriority) {
+          return false;
+        }
+
+        if (selectedAssigneeId === 'UNASSIGNED') {
+          if (task.assigneeId !== null) return false;
+        } else if (selectedAssigneeId !== 'ALL') {
+          if (task.assigneeId !== selectedAssigneeId) return false;
+        }
+
+        return true;
+      });
+
+      matchCount += tasks.length;
+      return {
+        ...column,
+        tasks,
+      };
+    });
+
+    return {
+      totalTasks: total,
+      matchingTasks: matchCount,
+      displayColumns: filteredCols,
+    };
+  }, [board, isFiltered, searchQuery, selectedPriority, selectedAssigneeId]);
+
+  const handleClearFilters = React.useCallback(() => {
+    setSearchQuery('');
+    setSelectedPriority('ALL');
+    setSelectedAssigneeId('ALL');
+  }, []);
+
   const handleCopyInviteCode = async () => {
     if (!board) return;
     try {
@@ -133,6 +208,22 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
         <SprintProgressBar columns={board.columns} />
       )}
 
+      {board && (
+        <BoardFilterBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedPriority={selectedPriority}
+          onPriorityChange={setSelectedPriority}
+          selectedAssigneeId={selectedAssigneeId}
+          onAssigneeChange={setSelectedAssigneeId}
+          members={board.members}
+          currentUserId={currentUser?.id}
+          totalTasks={totalTasks}
+          matchingTasks={matchingTasks}
+          onClearFilters={handleClearFilters}
+        />
+      )}
+
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only" data-testid="live-cue-announcements">
         {liveAnnouncement}
       </div>
@@ -169,7 +260,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
             onDragCancel={handleDragCancel}
           >
             <div className="flex-1 overflow-x-auto p-4 flex gap-3 items-start">
-              {board.columns.map((column) => (
+              {displayColumns.map((column) => (
                 <BoardColumnView
                   key={column.id}
                   column={column}
@@ -183,6 +274,8 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
                   cuesByTaskId={cuesByTaskId}
                   conflictsByTaskId={conflictsByTaskId}
                   deletedTaskBanners={deletedTaskBanners}
+                  isFiltered={isFiltered}
+                  onClearFilters={handleClearFilters}
                 />
               ))}
             </div>
