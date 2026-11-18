@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, Search } from 'lucide-react';
 import type { BoardDetail } from '../../api/types';
 import type { SocketConnectionState } from '../../api/socket';
 import { Button } from '../../components/Button';
@@ -14,6 +14,7 @@ export interface BoardHeaderProps {
   onNavigateBoards: () => void;
   onCopyInviteCode: () => void;
   onOpenSettings?: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
 export const BoardHeader: React.FC<BoardHeaderProps> = ({
@@ -23,6 +24,7 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
   onNavigateBoards,
   onCopyInviteCode,
   onOpenSettings,
+  onOpenCommandPalette,
 }) => {
   return (
     <header className="h-12 bg-surface-raised border-b border-rule px-4 flex items-center justify-between flex-shrink-0 z-10">
@@ -43,6 +45,22 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
       <div className="flex items-center gap-4">
         {board && board.members && board.members.length > 0 && (
           <MemberDropdown members={board.members} />
+        )}
+
+        {board && onOpenCommandPalette && (
+          <button
+            type="button"
+            onClick={onOpenCommandPalette}
+            aria-label="Open command palette (Ctrl K)"
+            title="Command palette (Ctrl K)"
+            className="hidden sm:flex items-center gap-1.5 h-7 px-2 text-[12px] text-ink-muted hover:text-ink bg-surface-canvas hover:bg-surface-lane border border-rule rounded-sm transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <Search size={13} strokeWidth={1.5} />
+            <span>Commands</span>
+            <kbd className="font-mono text-[10px] bg-surface-raised px-1 py-0.5 rounded border border-rule">
+              Ctrl K
+            </kbd>
+          </button>
         )}
 
         {board && (

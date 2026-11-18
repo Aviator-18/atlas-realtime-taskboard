@@ -22,6 +22,7 @@ export interface BoardColumnViewProps {
   deletedTaskBanners?: Array<{ id: number; columnId: number; message: string }>;
   isFiltered?: boolean;
   onClearFilters?: () => void;
+  onQuickCreateTask?: (req: { columnId: number; title: string }) => Promise<void>;
 }
 
 export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
@@ -38,7 +39,18 @@ export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
   deletedTaskBanners = [],
   isFiltered = false,
   onClearFilters,
+  onQuickCreateTask,
 }) => {
+  const [isQuickAdding, setIsQuickAdding] = React.useState(false);
+  const [quickTitle, setQuickTitle] = React.useState('');
+  const [isSubmittingQuick, setIsSubmittingQuick] = React.useState(false);
+  const quickInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (isQuickAdding) {
+      quickInputRef.current?.focus();
+    }
+  }, [isQuickAdding]);
   const { setNodeRef, isOver } = useDroppable({
     id: `col-${column.id}`,
     data: {
@@ -168,6 +180,92 @@ export const BoardColumnView: React.FC<BoardColumnViewProps> = ({
             ))}
         </SortableContext>
       </div>
+
+      {/* Column Footer: Quick Inline Add or "+ Add task" button */}
+      {onQuickCreateTask && (
+        <div className="pt-2 flex-shrink-0">
+          {isQuickAdding ? (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const trimmed = quickTitle.trim();
+                if (!trimmed || isSubmittingQuick) return;
+                try {
+                  setIsSubmittingQuick(true);
+                  await onQuickCreateTask({ columnId: column.id, title: trimmed });
+                  setQuickTitle('');
+                  setIsQuickAdding(false);
+                } catch {
+                  // Handled by mutation error
+                } finally {
+                  setIsSubmittingQuick(false);
+                }
+              }}
+              data-testid={`quick-add-form-${column.id}`}
+              className="bg-surface-raised border border-rule-strong rounded-md p-2 shadow-sm flex flex-col gap-2"
+            >
+              <input
+                ref={quickInputRef}
+                type="text"
+                value={quickTitle}
+                onChange={(e) => setQuickTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setIsQuickAdding(false);
+                    setQuickTitle('');
+                  }
+                }}
+                placeholder="What needs to be done? (Enter to add)"
+                aria-label={`Task title for ${column.name}`}
+                maxLength={120}
+                className="w-full text-[13px] text-ink placeholder:text-ink-muted/70 bg-transparent border-0 outline-none p-0 focus:ring-0"
+              />
+              <div className="flex items-center justify-between pt-1.5 border-t border-rule/50">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="submit"
+                    disabled={!quickTitle.trim() || isSubmittingQuick}
+                    className="px-2.5 py-1 text-[12px] font-medium bg-accent text-white rounded-sm disabled:opacity-50 hover:bg-accent/90 transition-colors duration-fast focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                  >
+                    {isSubmittingQuick ? 'Adding...' : 'Add'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsQuickAdding(false);
+                      setQuickTitle('');
+                    }}
+                    className="px-2 py-1 text-[12px] text-ink-muted hover:text-ink transition-colors duration-fast rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsQuickAdding(false);
+                    setQuickTitle('');
+                    onAddTask(column.id);
+                  }}
+                  className="text-[11.5px] text-accent hover:underline font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent rounded-sm"
+                >
+                  Full dialog
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsQuickAdding(true)}
+              data-testid={`quick-add-trigger-${column.id}`}
+              className="w-full py-1.5 px-2 flex items-center gap-1.5 text-[12.5px] font-medium text-ink-muted hover:text-ink hover:bg-surface-canvas/60 rounded-md transition-colors duration-fast focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            >
+              <Plus size={14} strokeWidth={1.5} />
+              <span>{strings.boardView.addTask}</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -15,6 +15,7 @@ import { TaskCardView } from './TaskCardView';
 import { TaskDrawer } from '../task/TaskDrawer';
 import { CreateTaskDialog } from '../task/CreateTaskDialog';
 import { BoardSettingsDialog } from './BoardSettingsDialog';
+import { CommandPalette } from './CommandPalette';
 import { useBoardDnd } from './useBoardDnd';
 import { useBoardSocket } from '../realtime/useBoardSocket';
 import { useBoardConflictState } from './useBoardConflictState';
@@ -39,6 +40,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<'ALL' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL');
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<number | 'ALL' | 'UNASSIGNED'>('ALL');
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   const { data: board, isLoading, isError, refetch } = useQuery({
     queryKey: ['board', boardId],
@@ -183,15 +185,18 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
           target instanceof HTMLSelectElement ||
           target?.isContentEditable;
 
-        if (!isEditing && selectedTaskId === null && !isCreateOpen && !isSettingsOpen) {
+        if (!isEditing && selectedTaskId === null && !isCreateOpen && !isSettingsOpen && !isCommandPaletteOpen) {
           e.preventDefault();
           navigate('/boards');
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate, selectedTaskId, isCreateOpen, isSettingsOpen]);
+  }, [navigate, selectedTaskId, isCreateOpen, isSettingsOpen, isCommandPaletteOpen]);
 
   return (
     <div className="min-h-screen bg-surface-canvas flex flex-col text-ink">
@@ -202,6 +207,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
         onNavigateBoards={() => navigate('/boards')}
         onCopyInviteCode={handleCopyInviteCode}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
 
       {board && board.columns && (
@@ -276,6 +282,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
                   deletedTaskBanners={deletedTaskBanners}
                   isFiltered={isFiltered}
                   onClearFilters={handleClearFilters}
+                  onQuickCreateTask={(req) => handleCreateTask(req)}
                 />
               ))}
             </div>
@@ -328,6 +335,24 @@ export const BoardPage: React.FC<BoardPageProps> = ({ boardId }) => {
           }}
           onBoardDeleted={() => navigate('/boards')}
           onBoardLeft={() => navigate('/boards')}
+        />
+      )}
+
+      {board && (
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onCreateTask={() => {
+            setCreateColumnId(board.columns[0]?.id ?? 1);
+            setIsCreateOpen(true);
+          }}
+          onFilterPriority={(p) => setSelectedPriority(p)}
+          onFilterAssignee={(a) => setSelectedAssigneeId(a)}
+          onClearFilters={handleClearFilters}
+          onCopyInviteCode={handleCopyInviteCode}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onNavigateBoards={() => navigate('/boards')}
+          currentUserId={currentUser?.id}
         />
       )}
     </div>

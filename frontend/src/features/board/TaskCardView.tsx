@@ -77,7 +77,7 @@ export const TaskCardView: React.FC<TaskCardViewProps> = ({
               ? 'opacity-30 border-dashed border-rule-strong'
               : isSelected
                 ? 'outline outline-2 outline-accent border-transparent'
-                : 'border-rule hover:border-rule-strong'
+                : 'border-rule hover:border-accent/40'
         }`}
       >
         <h3 className="text-[14px] leading-5 font-medium text-ink line-clamp-3">
