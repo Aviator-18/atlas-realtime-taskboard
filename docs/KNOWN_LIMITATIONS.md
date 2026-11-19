@@ -26,11 +26,11 @@ Boards are initialized with three default columns: "To do" (`TODO`), "In progres
 - **Limitation:** Users cannot create custom columns, rename existing columns, delete columns, or reorder column positions.
 - **Production resolution:** Implement dedicated REST endpoints and UI modals for board column CRUD and reordering operations.
 
-## 5. Coarse-grained membership roles
+## 5. Membership roles and permissions
 
-The database schema supports `OWNER` and `MEMBER` roles.
-- **Limitation:** In the current implementation, board owners and regular members possess identical permissions over boards and tasks. There is no fine-grained role-based access control (RBAC), permission delegation, or member management UI.
-- **Production resolution:** Enforce role checks in `BoardService` and `TaskService` restricting board deletion, column configuration, and membership removal to owners.
+The database schema supports `OWNER` and `MEMBER` roles. Board-level controls are enforced (only owners can remove members, regenerate invite codes, or delete boards).
+- **Limitation:** Regular members and owners have identical permissions over task mutations (any member can edit, move, or delete any task). There is no fine-grained task-level permission model (such as restricting edits to task creators/assignees) or custom role creation.
+- **Production resolution:** Extend RBAC to include granular task permissions and custom project roles.
 
 ## 6. Plaintext task descriptions and no attachments
 

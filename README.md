@@ -18,7 +18,7 @@ The live deployment is pre-seeded with the development dataset and demo accounts
 | Sana Qureshi | `sana@example.test` | `AtlasDev2026!` | Member |
 
 - **Pre-loaded board:** Checkout API, sprint 12
-- **Board invite code:** `PAYSPR12`
+- **Board invite access:** Invite codes use rolling 7-day expiration with auto-rotation. Sign in as Priya Nair (Owner) to view, copy, or regenerate the active invite code in Board Settings.
 - **Pre-loaded tasks:** 14 tasks with realistic technical descriptions, historical estimates in hours, priorities, and audit timestamps.
 
 ---
@@ -28,6 +28,8 @@ The live deployment is pre-seeded with the development dataset and demo accounts
 1. **Optimistic locking and conflict preservation:** Every task mutation (drag-and-drop move, title edit, description update, priority change) submits its expected version. Concurrent writes that collide are rejected with HTTP 409 `TASK_VERSION_CONFLICT`. The frontend immediately displays a conflict notification explaining who made the modification, reverts the stale card to the server state, and preserves the active user's uncommitted draft in the drawer so work is never silently lost.
 2. **Real-time synchronisation:** Task movements, creations, and edits are broadcast over a STOMP WebSocket channel (`/topic/boards/{boardId}`) strictly after database transactions commit (`AFTER_COMMIT`), with visual cues ("Moved by Arjun") highlighting active changes across peer browsers.
 3. **AI effort estimation:** Estimates effort in hours (0.5 to 40.0) and suggests priorities based on task context and completed team tasks. Powered by Google Gemini (OpenAI-compatible endpoint) with automatic fallback to a deterministic keyword-based heuristic estimator when external models are unavailable or rate-limited.
+4. **Board and member management:** Dedicated role-based controls (Owner vs Member). Board owners can remove members with automatic task unassignment (`assigneeId = null`) to prevent dangling assignments. Invite codes carry a rolling 7-day expiration (`invite_code_expires_at`), auto-rotate on owner access once expired, and support manual on-demand regeneration. Members can leave boards; owners can delete boards with cascade cleanup.
+5. **Productivity and keyboard workflows:** Global Command Palette (`Cmd+K` / `Ctrl+K`) for rapid navigation, search, and action execution; instant board search and quick filter pills (Priority: High / Medium / Low, and Assignee filtering); inline column task quick-add; and visual sprint progress tracking.
 
 ---
 
@@ -176,7 +178,7 @@ Unit, component, reconciliation, and integration tests with strict TypeScript co
 
 ```bash
 cd frontend
-npm test           # Run 61 Vitest unit and component tests
+npm test           # Run 75 Vitest unit and component tests across 11 test suites
 npm run lint       # ESLint rules check
 npm run typecheck  # TypeScript strict mode verification
 npm run build      # Production bundle verification
